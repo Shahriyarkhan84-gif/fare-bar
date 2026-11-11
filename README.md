@@ -44,7 +44,7 @@ Status compares net profit per hour with your target: green at or above target (
 
 ## Pages
 
-- **Home** — Active switch, the bar and its banner, Accepted / Declined, today's totals split by platform, session, recent deliveries, Export CSV
+- **Home** — Active switch, the offer pill and Profit / Loss line, today's totals split by platform, session, recent deliveries, Export CSV
 - **Weekly report** — last 7 days per platform: offers seen, taken, net, per hour, per mile
 - **Log delivery** — platform, rate, outbound and return miles, time
 - **Cost model** — MPG, fuel price, target per hour, time cost, tax estimate, assume-return toggle

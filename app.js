@@ -390,8 +390,6 @@ $('logForm').addEventListener('submit',function(e){
   e.preventDefault();
   logDelivery('logFormNote').then(function(ok){if(ok){note('logNote',$('logFormNote').textContent);note('logFormNote','');go('home')}});
 });
-$('logNow').addEventListener('click',function(){logDelivery('logNote',true)});
-$('logDeclined').addEventListener('click',function(){logDelivery('logNote',false)});
 $('sessionBtn').addEventListener('click',function(){set('fareBarSession',get('fareBarSession')?null:new Date().toISOString());showDeliveries()});
 $('exportCsv').addEventListener('click',exportCsv);
 $('exportCsv2').addEventListener('click',exportCsv);
