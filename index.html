@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Fare Bar</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#1c1c1e;color:#fff;font:15px/1.4 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:392px;margin:0 auto;padding:16px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;height:56px;padding:0 18px;border-radius:28px;background:#000;border:1px solid rgba(255,255,255,.14);position:sticky;top:12px}
+.verdict{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--v)}
+.verdict i{width:8px;height:8px;border-radius:50%;background:var(--v)}
+.fare{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.stats{text-align:right;line-height:1.2;font-variant-numeric:tabular-nums}
+.stats b{display:block;font-size:13px;color:var(--v)}
+.stats small{font-size:10px;font-weight:500;color:#9898a0}
+.accept{--v:#5cff5c}.reject{--v:#ff6e54}.empty{--v:#9898a0}
+form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+label{display:block;font-size:12px;color:#9898a0}
+input{display:block;width:100%;margin-top:4px;min-height:46px;padding:0 12px;border-radius:12px;border:1px solid #3a3a3c;background:#2c2c2e;color:#fff;font:inherit;font-size:17px}
+input:focus{outline:2px solid #5cff5c;outline-offset:1px}
+p{color:#9898a0;font-size:12px;margin:16px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <div class="bar accept" id="bar" role="status" aria-live="polite">
+    <span class="verdict"><i></i><span id="verdict">ACCEPT</span></span>
+    <span class="fare" id="fare">£3.07</span>
+    <span class="stats"><b id="perMile">£2.05/mi</b><small id="details">1.0 mi · £24.56/hr</small></span>
+  </div>
+  <form id="form" autocomplete="off">
+    <label>Fare (£)<input id="inFare" inputmode="decimal" value="3.07"></label>
+    <label>Miles<input id="inMiles" inputmode="decimal" value="1"></label>
+    <label>Minutes<input id="inMins" inputmode="decimal" value="7.5"></label>
+    <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
+  </form>
+  <p>Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
+</main>
+<script>
+var $=function(id){return document.getElementById(id)};
+var ids=['inFare','inMiles','inMins','inMin'];
+function num(id){return parseFloat($(id).value.replace(',','.'))}
+function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
+function save(){try{var s={};ids.forEach(function(id){s[id]=$(id).value});localStorage.setItem('fareBar',JSON.stringify(s))}catch(e){}}
+function calc(){
+  var fare=num('inFare'),miles=num('inMiles'),mins=num('inMins'),min=num('inMin'),bar=$('bar');
+  var ok=isFinite(fare)&&fare>=0&&miles>0;
+  $('fare').textContent=isFinite(fare)?'£'+fare.toFixed(2):'£–';
+  if(!ok){bar.className='bar empty';$('verdict').textContent='ENTER';$('perMile').textContent='–';$('details').textContent='fare and miles';return}
+  var perMile=fare/(miles*1.5);
+  var accept=!isFinite(min)||perMile>=min;
+  bar.className='bar '+(accept?'accept':'reject');
+  $('verdict').textContent=accept?'ACCEPT':'REJECT';
+  $('perMile').textContent='£'+perMile.toFixed(2)+'/mi';
+  $('details').textContent=miles.toFixed(1)+' mi'+(mins>0?' · £'+(fare/mins*60).toFixed(2)+'/hr':'');
+}
+load();calc();
+$('form').addEventListener('input',function(){calc();save()});
+$('form').addEventListener('submit',function(e){e.preventDefault()});
+</script>
+</body>
+</html>
