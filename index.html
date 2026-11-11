@@ -21,9 +21,10 @@
 
   <p class="step" id="step" hidden></p>
 
-  <div class="bar none" id="bar" role="status" aria-live="polite" aria-label="Offer profit" hidden>
-    <span>Rate</span><span>+</span><span>MILEAGE</span><span>=</span><span>profit+return</span>
-    <span id="bRate">(3.07)</span><span>+</span><span id="bMiles">2.0</span><span>=</span><b id="bNet">2.78</b>
+  <div class="offers" id="bar" role="status" aria-live="polite" hidden>
+    <p class="kicker" id="kicker">Current offer</p>
+    <div class="pill none" id="pill"><i class="dot" aria-hidden="true"></i><b id="pRate">£3.07</b><span class="sep" aria-hidden="true">·</span><span id="pMiles">2.0 mi</span><span class="sep" aria-hidden="true">·</span><span class="mins" id="pMins">~8 min</span></div>
+    <div class="earlier" id="earlier"></div>
   </div>
   <p class="banner none" id="banner" role="status" aria-live="polite" hidden></p>
 

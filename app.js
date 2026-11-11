@@ -56,23 +56,25 @@ function calc(){
   var c=cost(),o=offer(),bar=$('bar'),banner=$('banner');
   $('inRet').disabled=c.assume;
   if(c.assume&&o.out>=0)$('inRet').value=o.out;
+  var pill=$('pill');
   if(!isActive()){
-    bar.className='bar none';$('bRate').textContent='(–)';$('bMiles').textContent='–';$('bNet').textContent='OFF';
+    pill.className='pill none off';$('pRate').textContent='OFF';$('pMiles').textContent='';$('pMins').textContent='';pill.setAttribute('aria-label','Fare Bar is off');
     banner.className='banner none';banner.textContent='Fare Bar is off. Turn Active on to see profit.';
     $('breakdown').textContent='';return null;
   }
   if(!offerValid(o,c)){
-    bar.className='bar none';$('bRate').textContent='(–)';$('bMiles').textContent='–';$('bNet').textContent='–';
+    pill.className='pill none';$('pRate').textContent=o.rate>=0?money(o.rate):'£–';$('pMiles').textContent='– mi';$('pMins').textContent='';
     banner.className='banner none';banner.textContent='Enter a rate and miles to see profit.';
     $('breakdown').textContent='';return null;
   }
   var r=compute(o,c);
-  bar.className='bar '+r.status;
-  $('bRate').textContent='('+o.rate.toFixed(2)+')';
-  $('bMiles').textContent=r.miles.toFixed(1);
-  $('bNet').textContent=r.net.toFixed(2);
+  pill.className='pill '+r.status;
+  $('pRate').textContent=money(o.rate);
+  $('pMiles').textContent=r.miles.toFixed(1)+' mi';
+  $('pMins').textContent=o.mins>0?'~'+Math.round(o.mins)+' min':'';
+  pill.setAttribute('aria-label',o.platform+' offer: '+money(o.rate)+', '+r.miles.toFixed(1)+' miles there and back'+(o.mins>0?', about '+Math.round(o.mins)+' minutes':'')+', '+money(r.net)+' net profit');
   banner.className='banner '+r.status;
-  banner.textContent=o.platform+' · '+(r.perHour===null?'add the time to compare with your £'+c.target.toFixed(2)+' per hour target':
+  banner.textContent=o.platform+' · '+money(r.net)+' net · '+(r.perHour===null?'add the time to compare with your £'+c.target.toFixed(2)+' per hour target':
     (r.status==='green'?(r.strong?'Strong offer':'On target'):r.status==='yellow'?'Below target':'Low-value offer')+' · '+money(r.perHour)+'/hr vs £'+c.target.toFixed(2)+' target');
   $('breakdown').textContent='Rate '+money(o.rate)+(r.tip?' + expected tip '+money(r.tip):'')+' − mileage '+money(r.mileCost)+' ('+r.miles.toFixed(1)+' mi × '+(r.cpm*100).toFixed(1)+'p)'+(r.timeCost?' − time '+money(r.timeCost):'')+(r.tax?' − tax '+money(r.tax):'')+' = net '+money(r.net)+'.';
   return{o:o,r:r};
@@ -117,6 +119,7 @@ function applyOffer(o,source){
   }
   $('inOut').value=o.miles;
   saveOffer();calc();
+  $('kicker').textContent='New offer detected';
   n.className='small detected';
   n.textContent='Detected '+(o.platform||'offer')+' from '+source+': £'+o.fare.toFixed(2)+' · '+o.miles+' mi outbound'+(o.mins>0?' · '+o.mins+' min':'')+'.';
   return true;
@@ -184,6 +187,22 @@ function showDeliveries(){
     li.appendChild(what);li.appendChild(net);li.appendChild(del);list.appendChild(li);
   });
   $('exportCsv').disabled=!deliveries.length;
+  showEarlier();
+}
+// The last two logged offers, shown as smaller pills under the current one
+function showEarlier(){
+  var box=$('earlier'),c=cost();box.textContent='';
+  deliveries.slice(0,2).forEach(function(d){
+    var miles=Number(d.outbound_miles)+Number(d.return_miles),mins=Number(d.minutes),ph=mins>0?Number(d.net)/mins*60:null;
+    var st=ph===null?'none':ph>=c.target?'green':ph>=c.target*0.7?'yellow':'red';
+    var p=document.createElement('div');p.className='pill '+st;
+    var dot=document.createElement('i');dot.className='dot';dot.setAttribute('aria-hidden','true');p.appendChild(dot);
+    var parts=[['b',money(Number(d.rate))],['sep','·'],['span',miles.toFixed(1)+' mi']];
+    if(mins>0)parts.push(['sep','·'],['mins','~'+Math.round(mins)+' min']);
+    parts.forEach(function(x){var e=document.createElement(x[0]==='b'?'b':'span');if(x[0]==='sep'||x[0]==='mins')e.className=x[0];if(x[0]==='sep')e.setAttribute('aria-hidden','true');e.textContent=x[1];p.appendChild(e)});
+    p.setAttribute('aria-label','Earlier '+(d.platform||'')+' offer'+(d.accepted===false?', declined':'')+': '+money(Number(d.rate))+', '+money(Number(d.net))+' net');
+    box.appendChild(p);
+  });
 }
 function showReport(){
   var since=Date.now()-7*864e5,rows=deliveries.filter(function(d){return new Date(d.created_at).getTime()>=since}),body=$('reportRows');

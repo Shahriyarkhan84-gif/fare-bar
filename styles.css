@@ -96,3 +96,18 @@ select{min-height:46px;-webkit-appearance:none;appearance:none;background-image:
 .report thead th{border-top:0;color:#9898a0;font-weight:600;font-size:12px}
 .report tr.total td{font-weight:800}
 .recent li.declined .what b,.recent li.declined .net{color:#9898a0;font-weight:600}
+
+/* Offer pills: dot = verdict, then pay · total miles · time */
+.offers{margin-bottom:10px}
+.kicker{text-align:center;color:#9898a0;font-size:15px;margin:0 0 12px}
+.pill{display:flex;align-items:center;justify-content:center;gap:12px;min-height:64px;padding:10px 22px;border-radius:999px;background:#1c1c1e;border:1.5px solid #3a3a3c;font-variant-numeric:tabular-nums;white-space:nowrap;margin-bottom:12px}
+.pill .dot{flex:none;width:12px;height:12px;border-radius:50%;background:var(--v)}
+.pill b{font-size:28px;font-weight:700;letter-spacing:-.01em}
+.pill span{font-size:18px;font-weight:600}
+.pill .sep{color:#636366;font-size:14px}
+.pill .mins{color:#9898a0;font-weight:500}
+.earlier .pill{min-height:52px;opacity:.85}
+.earlier .pill b{font-size:22px}
+.earlier .pill span{font-size:16px}
+@media (max-width:360px){.pill{gap:8px;padding:10px 16px}.pill b{font-size:24px}.pill span{font-size:16px}}
+.pill.off .sep{display:none}
