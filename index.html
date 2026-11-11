@@ -29,10 +29,10 @@ h1{font-size:26px;font-weight:800;margin:0}
 .nav small{color:#9898a0;font-size:12px}
 .nav::after{content:"\203A";color:#9898a0;font-size:22px}
 #form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-#loginForm label{margin-bottom:12px}
-#loginForm .primary{margin-top:16px}
-#loginForm .ghost{margin-top:12px;background:#2c2c2e;color:#fff}
-#authNote.bad,#trialState.bad{color:#ff6e54}
+#loginForm label,#signupForm label{margin-bottom:12px}
+#loginForm .primary,#signupForm .primary{margin-top:16px}
+.ghost{background:#2c2c2e;color:#fff}
+.bad{color:#ff6e54}
 .step{font-size:12px;font-weight:700;color:#5cff5c;margin:-8px 0 12px}
 input:disabled{opacity:.5}
 label{display:block;font-size:12px;color:#9898a0}
@@ -79,9 +79,21 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
       <label>Email<input id="email" type="email" inputmode="email" autocomplete="email" required></label>
       <label>Password<input id="password" type="password" autocomplete="current-password" minlength="6" required></label>
       <button class="primary" type="submit" id="doLogin">Log in</button>
-      <button class="primary ghost" type="button" id="doSignup">Create account</button>
     </form>
     <p class="small" id="authNote" role="status" aria-live="polite"></p>
+    <button class="primary ghost" type="button" id="toSignup">Create account</button>
+  </section>
+
+  <section id="signup" hidden>
+    <p>Create your Fare Bar account. Both plans start with a 30-day free trial.</p>
+    <form id="signupForm">
+      <label>Email<input id="newEmail" type="email" inputmode="email" autocomplete="email" required></label>
+      <label>Password<input id="newPassword" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label>Confirm password<input id="newPassword2" type="password" autocomplete="new-password" minlength="6" required></label>
+      <button class="primary" type="submit" id="doSignup">Create account</button>
+    </form>
+    <p class="small" id="signupNote" role="status" aria-live="polite"></p>
+    <button class="primary ghost" type="button" id="toLogin">I already have an account</button>
   </section>
 
   <section id="home" hidden>
@@ -127,7 +139,7 @@ var SUPABASE_KEY='sb_publishable_uKwUj4XVuipFDdlI8NR8Pg_v0X3j84n'; // publishabl
 var TRIAL_DAYS=30;
 var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
-var TITLES={loading:'Fare Bar',login:'Log in',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
+var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
 var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
 var sb=null,session=null,trialRow=null,ready=false;
 
@@ -165,16 +177,17 @@ function gate(){
 }
 function go(view){
   var g=gate();
-  if(g)view=g;
-  else if(!TITLES[view]||view==='login'||view==='loading')view='home';
+  if(g==='login'&&view==='signup');
+  else if(g)view=g;
+  else if(!TITLES[view]||view==='login'||view==='signup'||view==='loading')view='home';
   Object.keys(TITLES).forEach(function(v){$(v).hidden=v!==view});
-  $('title').textContent=STEPS[g]?STEPS[g][1]:TITLES[view];
+  $('title').textContent=view==='signup'?TITLES.signup:STEPS[g]?STEPS[g][1]:TITLES[view];
   $('step').hidden=!STEPS[g];
   if(STEPS[g])$('step').textContent=STEPS[g][0];
   $('badge').hidden=view!=='home';
   $('back').hidden=view==='home'||!!g;
   $('bar').hidden=view!=='home'&&view!=='config';
-  history.replaceState(null,'',view==='home'||g?location.pathname:'#'+view);
+  history.replaceState(null,'',view==='signup'?'#signup':view==='home'||g?location.pathname:'#'+view);
   window.scrollTo(0,0);
 }
 function showPlan(){
@@ -190,7 +203,7 @@ function showPlan(){
   });
   $('who').textContent=session&&session.user?session.user.email:'Go back to the login screen';
 }
-function note(text,bad){var n=$('authNote');n.textContent=text;n.className='small'+(bad?' bad':'')}
+function note(id,text,bad){var n=$(id);n.textContent=text;n.className='small'+(bad?' bad':'')}
 
 function loadTrial(){
   if(!session){trialRow=null;return Promise.resolve()}
@@ -202,19 +215,34 @@ function setSession(s){
   if(!changed&&ready)return Promise.resolve();
   return loadTrial().then(function(){ready=true;showPlan();go(location.hash.slice(1))});
 }
-function busy(on){['doLogin','doSignup','email','password'].forEach(function(id){$(id).disabled=on})}
-function auth(mode){
+function busy(on){['doLogin','toSignup','email','password','doSignup','toLogin','newEmail','newPassword','newPassword2'].forEach(function(id){$(id).disabled=on})}
+function offline(id){busy(false);note(id,'Could not reach the login service. Check your connection and try again.',true)}
+function logIn(){
   var email=$('email').value.trim(),password=$('password').value;
-  if(!email||password.length<6){note('Enter your email and a password of at least 6 characters.',true);return}
-  busy(true);note(mode==='signup'?'Creating your account…':'Logging in…');
-  var call=mode==='signup'?sb.auth.signUp({email:email,password:password}):sb.auth.signInWithPassword({email:email,password:password});
-  call.then(function(r){
+  if(!email||!password){note('authNote','Enter your email and password.',true);return}
+  busy(true);note('authNote','Logging in…');
+  sb.auth.signInWithPassword({email:email,password:password}).then(function(r){
     busy(false);
-    if(r.error){note(r.error.message,true);return}
-    if(!r.data.session){note('Account created. Open the confirmation email we sent you, then come back and log in.');return}
-    $('password').value='';note('');
+    if(r.error){note('authNote',r.error.message,true);return}
+    $('password').value='';note('authNote','');
     return setSession(r.data.session);
-  },function(){busy(false);note('Could not reach the login service. Check your connection and try again.',true)});
+  },function(){offline('authNote')});
+}
+function signUp(){
+  var email=$('newEmail').value.trim(),p1=$('newPassword').value,p2=$('newPassword2').value;
+  if(!email){note('signupNote','Enter your email.',true);return}
+  if(p1.length<6){note('signupNote','Use a password of at least 6 characters.',true);return}
+  if(p1!==p2){note('signupNote','The two passwords do not match.',true);return}
+  busy(true);note('signupNote','Creating your account…');
+  sb.auth.signUp({email:email,password:p1}).then(function(r){
+    busy(false);
+    if(r.error){note('signupNote',r.error.message,true);return}
+    $('newPassword').value='';$('newPassword2').value='';
+    if(r.data.session){note('signupNote','');return setSession(r.data.session)}
+    $('email').value=email;
+    go('login');
+    note('authNote','Account created. Open the confirmation email we sent to '+email+', then log in here.');
+  },function(){offline('signupNote')});
 }
 
 load();fromLink();calc();
@@ -223,13 +251,15 @@ if(window.supabase){
   sb.auth.getSession().then(function(r){return setSession(r.data.session)},function(){ready=true;go('home')});
   sb.auth.onAuthStateChange(function(event,s){if(event==='SIGNED_OUT'||event==='SIGNED_IN')setTimeout(function(){setSession(s)},0)});
 }else{
-  ready=true;go('home');busy(true);note('Could not load the login service. Check your connection and reload.',true);
+  ready=true;go('home');busy(true);note('authNote','Could not load the login service. Check your connection and reload.',true);
 }
 
 document.querySelectorAll('.nav[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
 $('back').addEventListener('click',function(){go('home')});
-$('loginForm').addEventListener('submit',function(e){e.preventDefault();auth('login')});
-$('doSignup').addEventListener('click',function(){auth('signup')});
+$('loginForm').addEventListener('submit',function(e){e.preventDefault();logIn()});
+$('signupForm').addEventListener('submit',function(e){e.preventDefault();signUp()});
+$('toSignup').addEventListener('click',function(){go('signup')});
+$('toLogin').addEventListener('click',function(){go('login')});
 $('logout').addEventListener('click',function(){if(sb)sb.auth.signOut().then(function(){return setSession(null)})});
 document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('click',function(){
   if(trialRow||!session)return;

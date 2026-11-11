@@ -4,7 +4,7 @@ A slim fare bar app for delivery drivers. It is a single `index.html` with no bu
 
 ## First run
 
-1. **Log in** — create an account or log in with email and password (Supabase Auth)
+1. **Log in** or **Create account** — email and password (Supabase Auth). The Create account page asks for the password twice; new accounts confirm by email, then log in
 2. **Choose a plan** — start a 30-day free trial of Pro or Unlimited
 
 After that the app opens on Home. Log out returns to step 1.
