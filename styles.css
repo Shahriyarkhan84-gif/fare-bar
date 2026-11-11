@@ -111,3 +111,12 @@ select{min-height:46px;-webkit-appearance:none;appearance:none;background-image:
 .earlier .pill span{font-size:16px}
 @media (max-width:360px){.pill{gap:8px;padding:10px 16px}.pill b{font-size:24px}.pill span{font-size:16px}}
 .pill.off .sep{display:none}
+
+/* Profit or loss, in words, under each pill */
+.banner{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 14px}
+.banner b{font-size:22px;font-weight:800;color:var(--v)}
+.banner small{font-size:12px;font-weight:600;color:#9898a0}
+.result{text-align:center;font-size:14px;font-weight:700;color:var(--v);margin:-6px 0 12px}
+.result span{color:#9898a0;font-weight:500}
+.earlier{margin-bottom:8px}
+.offers .pill{margin-bottom:10px}

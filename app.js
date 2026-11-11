@@ -59,23 +59,24 @@ function calc(){
   var pill=$('pill');
   if(!isActive()){
     pill.className='pill none off';$('pRate').textContent='OFF';$('pMiles').textContent='';$('pMins').textContent='';pill.setAttribute('aria-label','Fare Bar is off');
-    banner.className='banner none';banner.textContent='Fare Bar is off. Turn Active on to see profit.';
+    banner.className='banner none';$('bWord').textContent='Off';$('bMore').textContent='Turn Active on to see profit or loss.';
     $('breakdown').textContent='';return null;
   }
   if(!offerValid(o,c)){
     pill.className='pill none';$('pRate').textContent=o.rate>=0?money(o.rate):'£–';$('pMiles').textContent='– mi';$('pMins').textContent='';
-    banner.className='banner none';banner.textContent='Enter a rate and miles to see profit.';
+    banner.className='banner none';$('bWord').textContent='–';$('bMore').textContent='Enter a rate and miles to see profit or loss.';
     $('breakdown').textContent='';return null;
   }
   var r=compute(o,c);
-  pill.className='pill '+r.status;
+  var pl=r.net>0.005?'green':r.net<-0.005?'red':'none';
+  pill.className='pill '+pl;
   $('pRate').textContent=money(o.rate);
   $('pMiles').textContent=r.miles.toFixed(1)+' mi';
   $('pMins').textContent=o.mins>0?'~'+Math.round(o.mins)+' min':'';
   pill.setAttribute('aria-label',o.platform+' offer: '+money(o.rate)+', '+r.miles.toFixed(1)+' miles there and back'+(o.mins>0?', about '+Math.round(o.mins)+' minutes':'')+', '+money(r.net)+' net profit');
-  banner.className='banner '+r.status;
-  banner.textContent=o.platform+' · '+money(r.net)+' net · '+(r.perHour===null?'add the time to compare with your £'+c.target.toFixed(2)+' per hour target':
-    (r.status==='green'?(r.strong?'Strong offer':'On target'):r.status==='yellow'?'Below target':'Low-value offer')+' · '+money(r.perHour)+'/hr vs £'+c.target.toFixed(2)+' target');
+  banner.className='banner '+pl;
+  $('bWord').textContent=(r.net>0.005?'Profit ':r.net<-0.005?'Loss ':'Break even ')+(Math.abs(r.net)>0.005?'£'+Math.abs(r.net).toFixed(2):'');
+  $('bMore').textContent=o.platform+' · after '+r.miles.toFixed(1)+' mi of driving'+(r.perHour===null?'':' · '+money(r.perHour)+'/hr'+(r.perHour<c.target?', under your £'+c.target.toFixed(2)+' target':''));
   $('breakdown').textContent='Rate '+money(o.rate)+(r.tip?' + expected tip '+money(r.tip):'')+' − mileage '+money(r.mileCost)+' ('+r.miles.toFixed(1)+' mi × '+(r.cpm*100).toFixed(1)+'p)'+(r.timeCost?' − time '+money(r.timeCost):'')+(r.tax?' − tax '+money(r.tax):'')+' = net '+money(r.net)+'.';
   return{o:o,r:r};
 }
@@ -191,10 +192,11 @@ function showDeliveries(){
 }
 // The last two logged offers, shown as smaller pills under the current one
 function showEarlier(){
-  var box=$('earlier'),c=cost();box.textContent='';
+  var box=$('earlier');box.textContent='';
+  if(deliveries.length){var k=document.createElement('p');k.className='kicker';k.textContent='Earlier offers';box.appendChild(k)}
   deliveries.slice(0,2).forEach(function(d){
     var miles=Number(d.outbound_miles)+Number(d.return_miles),mins=Number(d.minutes),ph=mins>0?Number(d.net)/mins*60:null;
-    var st=ph===null?'none':ph>=c.target?'green':ph>=c.target*0.7?'yellow':'red';
+    var nt=Number(d.net),st=nt>0.005?'green':nt<-0.005?'red':'none';
     var p=document.createElement('div');p.className='pill '+st;
     var dot=document.createElement('i');dot.className='dot';dot.setAttribute('aria-hidden','true');p.appendChild(dot);
     var parts=[['b',money(Number(d.rate))],['sep','·'],['span',miles.toFixed(1)+' mi']];
@@ -202,6 +204,10 @@ function showEarlier(){
     parts.forEach(function(x){var e=document.createElement(x[0]==='b'?'b':'span');if(x[0]==='sep'||x[0]==='mins')e.className=x[0];if(x[0]==='sep')e.setAttribute('aria-hidden','true');e.textContent=x[1];p.appendChild(e)});
     p.setAttribute('aria-label','Earlier '+(d.platform||'')+' offer'+(d.accepted===false?', declined':'')+': '+money(Number(d.rate))+', '+money(Number(d.net))+' net');
     box.appendChild(p);
+    var res=document.createElement('p'),sp=document.createElement('span');res.className='result '+st;
+    res.textContent=(nt>0.005?'Profit ':nt<-0.005?'Loss ':'Break even ')+(Math.abs(nt)>0.005?'£'+Math.abs(nt).toFixed(2):'');
+    sp.textContent=(d.platform?' · '+d.platform:'')+(d.accepted===false?' · declined':'');res.appendChild(sp);
+    box.appendChild(res);
   });
 }
 function showReport(){
@@ -263,7 +269,7 @@ function go(view){
   $('badge').hidden=view!=='home';
   $('back').hidden=view==='home'||!!g;
   var showBar=view==='home'||view==='log'||view==='cost';
-  $('bar').hidden=!showBar;$('banner').hidden=!showBar;
+  $('bar').hidden=!showBar;$('banner').hidden=!showBar;$('earlier').hidden=view!=='home';
   if(view==='cost')showCost();
   if(view==='home')showDeliveries();
   if(view==='report')showReport();

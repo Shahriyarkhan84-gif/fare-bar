@@ -18,7 +18,7 @@ Net profit = rate (+ expected tip, Uber Eats only) − (outbound + return miles)
 - **Tax** = tax estimate % of the profit, when the profit is positive
 - **Assume return = outbound** fills in the return miles
 
-Each offer shows as a pill: a dot for the verdict (green, yellow, red), then the pay, the total miles there and back, and the time, under "New offer detected". The line below gives the platform, the net profit and the verdict. The last two logged offers show as smaller pills underneath.
+Each offer shows as a pill: a dot (green = profit, red = loss), then the pay, the total miles there and back, and the time, under "New offer detected". Straight under it, in large type: "Profit £16.06" or "Loss £1.34", with the platform, the miles and the pay per hour (and a note when it is under your target). The last two logged offers show as smaller pills underneath.
 
 Status compares net profit per hour with your target: green at or above target (a "Strong offer" from 125%), yellow from 70%, red below that.
 
