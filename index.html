@@ -31,6 +31,8 @@ h1{font-size:26px;font-weight:800;margin:0}
 #form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 #loginForm label{margin-bottom:12px}
 #loginForm .primary{margin-top:16px}
+#loginForm .ghost{margin-top:12px;background:#2c2c2e;color:#fff}
+#authNote.bad,#trialState.bad{color:#ff6e54}
 .step{font-size:12px;font-weight:700;color:#5cff5c;margin:-8px 0 12px}
 input:disabled{opacity:.5}
 label{display:block;font-size:12px;color:#9898a0}
@@ -57,34 +59,36 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
 <main>
   <header>
     <h1 id="title">Fare Bar</h1>
-    <span class="badge" id="badge">FREE</span>
+    <span class="badge" id="badge" hidden>FREE</span>
     <button class="back" id="back" hidden>Done</button>
   </header>
 
   <p class="step" id="step" hidden></p>
 
-  <div class="bar accept" id="bar" role="status" aria-live="polite">
+  <div class="bar accept" id="bar" role="status" aria-live="polite" hidden>
     <span class="verdict"><i></i><span id="verdict">ACCEPT</span></span>
     <span class="fare" id="fare">£3.07</span>
     <span class="stats"><b id="perMile">£2.05/mi</b><small id="details">1.0 mi · £24.56/hr</small></span>
   </div>
 
+  <section id="loading"><p>Loading…</p></section>
+
   <section id="login" hidden>
-    <p>Log in to use Fare Bar.</p>
-    <form id="loginForm" autocomplete="off">
-      <label>Email<input id="email" type="email" inputmode="email" disabled></label>
-      <label>Password<input id="password" type="password" disabled></label>
-      <button class="primary" type="submit" disabled>Log in</button>
+    <p>Log in or create an account to use Fare Bar.</p>
+    <form id="loginForm">
+      <label>Email<input id="email" type="email" inputmode="email" autocomplete="email" required></label>
+      <label>Password<input id="password" type="password" autocomplete="current-password" minlength="6" required></label>
+      <button class="primary" type="submit" id="doLogin">Log in</button>
+      <button class="primary ghost" type="button" id="doSignup">Create account</button>
     </form>
-    <p class="small">Accounts are not connected yet, so email login is switched off.</p>
-    <button class="primary" id="guest">Continue on this phone only</button>
+    <p class="small" id="authNote" role="status" aria-live="polite"></p>
   </section>
 
-  <section id="home">
+  <section id="home" hidden>
     <button class="nav" data-go="config"><span><b>Configuration</b><small>Fare, miles, minutes and your minimum per mile</small></span></button>
     <button class="nav" data-go="control"><span><b>Control Centre</b><small>Open the bar from your iPhone Control Centre</small></span></button>
     <button class="nav" data-go="plans"><span><b>Subscription</b><small>See plans</small></span></button>
-    <button class="nav" id="logout"><span><b>Log out</b><small>Go back to the login screen</small></span></button>
+    <button class="nav" id="logout"><span><b>Log out</b><small id="who">Go back to the login screen</small></span></button>
   </section>
 
   <section id="config" hidden>
@@ -113,16 +117,20 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
     <p id="trialState" aria-live="polite">Both plans start with a 30-day free trial.</p>
     <div class="plan" data-plan="Pro"><h2>Pro <span>£4.99 / month</span></h2><p>30 days free, then £4.99 a month</p><p>Sample price; features to be decided</p><button class="primary trial" data-plan="Pro">Start 30-day free trial</button></div>
     <div class="plan" data-plan="Unlimited"><h2>Unlimited <span>£9.99 / month</span></h2><p>30 days free, then £9.99 a month</p><p>Sample price; features to be decided</p><button class="primary trial" data-plan="Unlimited">Start 30-day free trial</button></div>
-    <p class="small">Payments are not set up yet. The trial is only remembered on this phone and nothing is charged when it ends.</p>
+    <p class="small">Payments are not set up yet, so nothing is charged when the trial ends.</p>
   </section>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+var SUPABASE_URL='https://fitscgmzxggpobzulpbe.supabase.co';
+var SUPABASE_KEY='sb_publishable_uKwUj4XVuipFDdlI8NR8Pg_v0X3j84n'; // publishable key: safe to ship in the page
+var TRIAL_DAYS=30;
 var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
-var TITLES={login:'Log in',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
+var TITLES={loading:'Fare Bar',login:'Log in',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
 var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
-function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function set(k,v){try{v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+var sb=null,session=null,trialRow=null,ready=false;
+
 function num(id){return parseFloat($(id).value.replace(',','.'))}
 function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
 function save(){try{var s={};ids.forEach(function(id){s[id]=$(id).value});localStorage.setItem('fareBar',JSON.stringify(s))}catch(e){}}
@@ -144,33 +152,35 @@ function calc(){
   $('perMile').textContent='£'+perMile.toFixed(2)+'/mi';
   $('details').textContent=miles.toFixed(1)+' mi'+(mins>0?' · £'+(fare/mins*60).toFixed(2)+'/hr':'');
 }
+
+function trial(){
+  if(!trialRow)return null;
+  return{plan:trialRow.plan,left:TRIAL_DAYS-Math.floor((Date.now()-new Date(trialRow.started_at).getTime())/864e5)};
+}
 function gate(){
-  if(!get('fareBarUser'))return'login';
-  if(!trial())return'plans';
+  if(!ready)return'loading';
+  if(!session)return'login';
+  if(!trialRow)return'plans';
   return null;
 }
 function go(view){
   var g=gate();
   if(g)view=g;
-  else if(!TITLES[view]||view==='login')view='home';
+  else if(!TITLES[view]||view==='login'||view==='loading')view='home';
   Object.keys(TITLES).forEach(function(v){$(v).hidden=v!==view});
-  $('title').textContent=g?STEPS[g][1]:TITLES[view];
-  $('step').hidden=!g;
-  if(g)$('step').textContent=STEPS[g][0];
+  $('title').textContent=STEPS[g]?STEPS[g][1]:TITLES[view];
+  $('step').hidden=!STEPS[g];
+  if(STEPS[g])$('step').textContent=STEPS[g][0];
   $('badge').hidden=view!=='home';
   $('back').hidden=view==='home'||!!g;
-  $('bar').hidden=view==='login'||view==='control'||view==='plans';
+  $('bar').hidden=view!=='home'&&view!=='config';
   history.replaceState(null,'',view==='home'||g?location.pathname:'#'+view);
   window.scrollTo(0,0);
 }
-var TRIAL_DAYS=30;
-function trial(){
-  try{var t=JSON.parse(localStorage.getItem('fareBarTrial')||'null');if(!t||!t.plan||!t.start)return null;
-    var left=TRIAL_DAYS-Math.floor((Date.now()-t.start)/864e5);return{plan:t.plan,left:left}}catch(e){return null}
-}
 function showPlan(){
   var t=trial(),active=t&&t.left>0;
-  $('badge').textContent=active?t.plan.toUpperCase()+' TRIAL · '+t.left+(t.left===1?' DAY':' DAYS'):'FREE';
+  $('badge').textContent=active?t.plan.toUpperCase()+' TRIAL · '+t.left+(t.left===1?' DAY':' DAYS'):t?'TRIAL ENDED':'FREE';
+  $('trialState').className='';
   $('trialState').textContent=active?t.plan+' trial: '+t.left+(t.left===1?' day':' days')+' left.':t?'Your '+t.plan+' trial has ended.':'Both plans start with a 30-day free trial.';
   document.querySelectorAll('.plan').forEach(function(c){
     var mine=active&&c.dataset.plan===t.plan,btn=c.querySelector('.trial');
@@ -178,27 +188,65 @@ function showPlan(){
     btn.disabled=!!t;
     btn.textContent=mine?'Trial running':t?(c.dataset.plan===t.plan?'Trial used':'Trial already used'):'Start 30-day free trial';
   });
+  $('who').textContent=session&&session.user?session.user.email:'Go back to the login screen';
 }
-document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('click',function(){
-  if(trial())return;
-  var onboarding=gate()==='plans';
-  set('fareBarTrial',JSON.stringify({plan:b.dataset.plan,start:Date.now()}));
-  showPlan();
-  if(onboarding)go('home');
-})});
-load();fromLink();calc();showPlan();go(location.hash.slice(1));
+function note(text,bad){var n=$('authNote');n.textContent=text;n.className='small'+(bad?' bad':'')}
+
+function loadTrial(){
+  if(!session){trialRow=null;return Promise.resolve()}
+  return sb.from('trials').select('plan,started_at').eq('user_id',session.user.id).maybeSingle().then(function(r){trialRow=r.error?null:r.data});
+}
+function setSession(s){
+  var changed=(s&&s.user.id)!==(session&&session.user.id);
+  session=s;
+  if(!changed&&ready)return Promise.resolve();
+  return loadTrial().then(function(){ready=true;showPlan();go(location.hash.slice(1))});
+}
+function busy(on){['doLogin','doSignup','email','password'].forEach(function(id){$(id).disabled=on})}
+function auth(mode){
+  var email=$('email').value.trim(),password=$('password').value;
+  if(!email||password.length<6){note('Enter your email and a password of at least 6 characters.',true);return}
+  busy(true);note(mode==='signup'?'Creating your account…':'Logging in…');
+  var call=mode==='signup'?sb.auth.signUp({email:email,password:password}):sb.auth.signInWithPassword({email:email,password:password});
+  call.then(function(r){
+    busy(false);
+    if(r.error){note(r.error.message,true);return}
+    if(!r.data.session){note('Account created. Open the confirmation email we sent you, then come back and log in.');return}
+    $('password').value='';note('');
+    return setSession(r.data.session);
+  },function(){busy(false);note('Could not reach the login service. Check your connection and try again.',true)});
+}
+
+load();fromLink();calc();
+if(window.supabase){
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  sb.auth.getSession().then(function(r){return setSession(r.data.session)},function(){ready=true;go('home')});
+  sb.auth.onAuthStateChange(function(event,s){if(event==='SIGNED_OUT'||event==='SIGNED_IN')setTimeout(function(){setSession(s)},0)});
+}else{
+  ready=true;go('home');busy(true);note('Could not load the login service. Check your connection and reload.',true);
+}
+
 document.querySelectorAll('.nav[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
 $('back').addEventListener('click',function(){go('home')});
-$('guest').addEventListener('click',function(){set('fareBarUser','guest');go('home')});
-$('loginForm').addEventListener('submit',function(e){e.preventDefault()});
-$('logout').addEventListener('click',function(){set('fareBarUser',null);go('home')});
+$('loginForm').addEventListener('submit',function(e){e.preventDefault();auth('login')});
+$('doSignup').addEventListener('click',function(){auth('signup')});
+$('logout').addEventListener('click',function(){if(sb)sb.auth.signOut().then(function(){return setSession(null)})});
+document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('click',function(){
+  if(trialRow||!session)return;
+  var onboarding=gate()==='plans';
+  b.disabled=true;
+  sb.from('trials').insert({user_id:session.user.id,plan:b.dataset.plan}).select('plan,started_at').single().then(function(r){
+    if(r.error){b.disabled=false;$('trialState').className='bad';$('trialState').textContent='Could not start the trial: '+r.error.message;return}
+    trialRow=r.data;showPlan();if(onboarding)go('home');
+  });
+})});
 $('form').addEventListener('input',function(){calc();save()});
 $('form').addEventListener('submit',function(e){e.preventDefault()});
 $('copy').addEventListener('click',function(){
-  var link=location.origin+location.pathname,note=$('copyNote');
+  var link=location.origin+location.pathname,n=$('copyNote');
   if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(link).then(function(){note.textContent='Link copied: '+link},function(){note.textContent='Copy this link: '+link});
-  }else{note.textContent='Copy this link: '+link}
+    navigator.clipboard.writeText(link).then(function(){n.textContent='Link copied: '+link},function(){n.textContent='Copy this link: '+link});
+  }else{n.textContent='Copy this link: '+link}
 });
 </script>
 </body>

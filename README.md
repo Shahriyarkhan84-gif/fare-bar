@@ -4,10 +4,20 @@ A slim fare bar app for delivery drivers. It is a single `index.html` with no bu
 
 ## First run
 
-1. **Log in** — email login is switched off until accounts are connected; "Continue on this phone only" lets you in
+1. **Log in** — create an account or log in with email and password (Supabase Auth)
 2. **Choose a plan** — start a 30-day free trial of Pro or Unlimited
 
 After that the app opens on Home. Log out returns to step 1.
+
+## Backend
+
+Supabase project `fare-bar` (eu-west-2).
+
+- **Accounts** — Supabase Auth, email and password
+- **`public.trials`** — one row per user: `plan` and `started_at`. Row level security lets a signed-in user read and create only their own row; rows cannot be changed or deleted, and the start time is set by the database
+- The page ships the project URL and the **publishable** key only
+
+Payments are not connected: nothing is charged when a trial ends.
 
 ## Sending an order to the bar
 
@@ -22,7 +32,7 @@ An iPhone Shortcut can build this link, so the bar can be filled without typing.
 - **Home** — the fare bar, plus buttons for Configuration, Control Centre and Subscription
 - **Configuration** — type the fare, miles, minutes and your minimum per mile
 - **Control Centre** — steps to add an iPhone Control Centre button that opens the app, and a button to copy the app link
-- **Subscription** — Pro and Unlimited plans, each with a 30-day free trial. Prices are samples and payments are not connected: the trial is only remembered on the device and nothing is charged when it ends
+- **Subscription** — Pro and Unlimited plans, each with a 30-day free trial saved to the account. Prices are samples and payments are not connected
 
 ## Maths
 
@@ -30,4 +40,4 @@ An iPhone Shortcut can build this link, so the bar can be filled without typing.
 - **Per hour** = fare ÷ minutes × 60
 - **ACCEPT / REJECT** — accept when per mile is at or above your minimum (default £1.50)
 
-Your numbers are remembered on the device.
+Your fare numbers are remembered on the device.
