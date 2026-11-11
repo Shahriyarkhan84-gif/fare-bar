@@ -1,0 +1,10 @@
+{
+  "headers": [
+    {
+      "source": "/fare-bar.mobileconfig",
+      "headers": [
+        { "key": "Content-Type", "value": "application/x-apple-aspen-config" }
+      ]
+    }
+  ]
+}

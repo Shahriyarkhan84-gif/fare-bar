@@ -48,3 +48,4 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
 .plan.on h2 span{color:#5cff5c}
 .plan p{font-size:13px;margin:0 0 4px}
 [hidden]{display:none!important}
+.link{display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:12px}

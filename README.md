@@ -24,6 +24,10 @@ Supabase project `fare-bar` (eu-west-2).
 
 Payments are not connected: nothing is charged when a trial ends.
 
+## Install on iPhone
+
+`fare-bar.mobileconfig` is an iOS configuration profile containing one Web Clip. Installing it adds the Fare Bar icon to the Home Screen and opens the app full screen. It changes no other settings and is not signed, so iOS shows it as "Not Signed". `vercel.json` serves it with the content type iOS expects.
+
 ## Sending an order to the bar
 
 Open the app with the numbers in the link and the bar fills itself:
