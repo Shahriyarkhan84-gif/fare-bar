@@ -1,6 +1,6 @@
 # Fare Bar
 
-A slim fare bar for delivery drivers. Type the fare, miles and minutes, and it shows:
+A slim fare bar for delivery drivers. The page shows only the bar. Tap the bar to type the fare, miles and minutes, and it shows:
 
 - **Per mile** = fare ÷ (miles × 1.5) — the extra half covers the return trip
 - **Per hour** = fare ÷ minutes × 60

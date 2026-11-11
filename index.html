@@ -7,13 +7,13 @@
 <title>Fare Bar</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;background:#1c1c1e;color:#fff;font:15px/1.4 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+html,body{margin:0;background:#000;color:#fff;font:15px/1.4 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:392px;margin:0 auto;padding:16px}
-.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;height:56px;padding:0 18px;border-radius:28px;background:#000;border:1px solid rgba(255,255,255,.14);position:sticky;top:12px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;height:56px;padding:0 18px;border-radius:28px;background:#000;border:1px solid rgba(255,255,255,.14);position:sticky;top:12px;width:100%;color:inherit;font:inherit;cursor:pointer}
 .verdict{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--v)}
 .verdict i{width:8px;height:8px;border-radius:50%;background:var(--v)}
 .fare{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
-.stats{text-align:right;line-height:1.2;font-variant-numeric:tabular-nums}
+.stats{display:block;text-align:right;line-height:1.2;font-variant-numeric:tabular-nums}
 .stats b{display:block;font-size:13px;color:var(--v)}
 .stats small{font-size:10px;font-weight:500;color:#9898a0}
 .accept{--v:#5cff5c}.reject{--v:#ff6e54}.empty{--v:#9898a0}
@@ -26,11 +26,12 @@ p{color:#9898a0;font-size:12px;margin:16px 0 0}
 </head>
 <body>
 <main>
-  <div class="bar accept" id="bar" role="status" aria-live="polite">
+  <button type="button" class="bar accept" id="bar" aria-expanded="false" aria-controls="panel" aria-label="Fare bar. Tap to change the numbers.">
     <span class="verdict"><i></i><span id="verdict">ACCEPT</span></span>
     <span class="fare" id="fare">£3.07</span>
     <span class="stats"><b id="perMile">£2.05/mi</b><small id="details">1.0 mi · £24.56/hr</small></span>
-  </div>
+  </button>
+  <div id="panel" hidden>
   <form id="form" autocomplete="off">
     <label>Fare (£)<input id="inFare" inputmode="decimal" value="3.07"></label>
     <label>Miles<input id="inMiles" inputmode="decimal" value="1"></label>
@@ -38,6 +39,7 @@ p{color:#9898a0;font-size:12px;margin:16px 0 0}
     <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
   </form>
   <p>Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
+  </div>
 </main>
 <script>
 var $=function(id){return document.getElementById(id)};
@@ -49,7 +51,7 @@ function calc(){
   var fare=num('inFare'),miles=num('inMiles'),mins=num('inMins'),min=num('inMin'),bar=$('bar');
   var ok=isFinite(fare)&&fare>=0&&miles>0;
   $('fare').textContent=isFinite(fare)?'£'+fare.toFixed(2):'£–';
-  if(!ok){bar.className='bar empty';$('verdict').textContent='ENTER';$('perMile').textContent='–';$('details').textContent='fare and miles';return}
+  if(!ok){bar.className='bar empty';$('verdict').textContent='TAP';$('perMile').textContent='–';$('details').textContent='fare and miles';return}
   var perMile=fare/(miles*1.5);
   var accept=!isFinite(min)||perMile>=min;
   bar.className='bar '+(accept?'accept':'reject');
@@ -58,6 +60,7 @@ function calc(){
   $('details').textContent=miles.toFixed(1)+' mi'+(mins>0?' · £'+(fare/mins*60).toFixed(2)+'/hr':'');
 }
 load();calc();
+$('bar').addEventListener('click',function(){var p=$('panel');p.hidden=!p.hidden;this.setAttribute('aria-expanded',!p.hidden);if(!p.hidden)$('inFare').focus()});
 $('form').addEventListener('input',function(){calc();save()});
 $('form').addEventListener('submit',function(e){e.preventDefault()});
 </script>
