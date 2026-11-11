@@ -3,21 +3,56 @@ var SUPABASE_KEY='sb_publishable_uKwUj4XVuipFDdlI8NR8Pg_v0X3j84n'; // publishabl
 var TRIAL_DAYS=30;
 var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
-var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',config:'Configuration',profile:'Profile',control:'Control Centre',plans:'Subscription'};
+var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',config:'Configuration',auto:'Auto-detect',profile:'Profile',control:'Control Centre',plans:'Subscription'};
 var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
 var sb=null,session=null,trialRow=null,isOwner=false,ready=false;
 
 function num(id){return parseFloat($(id).value.replace(',','.'))}
 function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
 function save(){try{var s={};ids.forEach(function(id){s[id]=$(id).value});localStorage.setItem('fareBar',JSON.stringify(s))}catch(e){}}
+function isActive(){try{return localStorage.getItem('fareBarActive')!=='0'}catch(e){return true}}
+function setActive(on){
+  try{localStorage.setItem('fareBarActive',on?'1':'0')}catch(e){}
+  $('activeToggle').setAttribute('aria-checked',on?'true':'false');
+  $('activeNote').textContent=on?'On: new orders update the bar':'Off: new orders are ignored';
+  calc();
+}
+// Reads a delivery request's text (from a screenshot) and finds the fare, distance and time.
+function parseOffer(text){
+  var t=String(text||'').replace(/(\d),(\d)/g,'$1.$2'),m,out={};
+  var fares=[],re=/£\s*(\d+(?:\.\d{1,2})?)/g;
+  while((m=re.exec(t)))fares.push(parseFloat(m[1]));
+  if(fares.length)out.fare=Math.max.apply(null,fares); // the biggest £ amount is the total, tip included
+  var dist=[],total=null;re=/(\d+(?:\.\d+)?)\s*(mi|miles?|km)\b(?=([^\n]{0,12}))/gi;
+  while((m=re.exec(t))){var d=parseFloat(m[1])*(m[2].toLowerCase()==='km'?0.621371:1);dist.push(d);if(/total/i.test(m[3]))total=d}
+  if(dist.length)out.miles=Math.round((total!==null?total:dist.reduce(function(a,b){return a+b},0))*100)/100; // "total" if shown, else pickup + drop-off
+  var mins=[];re=/(\d+)\s*min/gi;
+  while((m=re.exec(t)))mins.push(parseInt(m[1],10));
+  if(mins.length)out.mins=Math.max.apply(null,mins);
+  return out;
+}
+function applyOffer(o,source){
+  var n=$('detected');n.hidden=false;
+  if(!isActive()){n.className='small detected bad';n.textContent='Fare Bar is off, so that order was ignored.';return false}
+  if(!(o.fare>=0)||!(o.miles>0)){n.className='small detected bad';n.textContent='Could not find a fare and a distance in that '+source+'.';return false}
+  $('inFare').value=o.fare;$('inMiles').value=o.miles;$('inMins').value=o.mins>0?o.mins:'';
+  save();calc();
+  n.className='small detected';
+  n.textContent='Detected from '+source+': £'+o.fare.toFixed(2)+' · '+o.miles+' mi'+(o.mins>0?' · '+o.mins+' min':'')+'.';
+  return true;
+}
 function fromLink(){
-  // A link such as ?fare=3.07&miles=1&mins=7.5 fills the bar, so a Shortcut can send an order to the app
-  var q=new URLSearchParams(location.search),map={fare:'inFare',miles:'inMiles',mins:'inMins'},used=false;
-  Object.keys(map).forEach(function(k){var v=parseFloat((q.get(k)||'').replace(',','.'));if(isFinite(v)&&v>=0){$(map[k]).value=v;used=true}});
-  if(used){save();history.replaceState(null,'',location.pathname+location.hash)}
+  // ?text=... carries the text of a request screenshot; ?fare=3.07&miles=1&mins=7.5 carries the numbers directly
+  var q=new URLSearchParams(location.search),o={},has=false;
+  if(q.get('text')){o=parseOffer(q.get('text'));has=true}
+  else['fare','miles','mins'].forEach(function(k){var v=parseFloat((q.get(k)||'').replace(',','.'));if(isFinite(v)&&v>=0){o[k]=v;has=true}});
+  if(!has)return;
+  history.replaceState(null,'',location.pathname+location.hash);
+  applyOffer(o,q.get('text')?'screenshot':'link');
 }
 function calc(){
   var fare=num('inFare'),miles=num('inMiles'),mins=num('inMins'),min=num('inMin'),bar=$('bar');
+  if(!isActive()){bar.className='bar empty';$('verdict').textContent='OFF';$('fare').textContent='£–';$('perMile').textContent='–';$('details').textContent='turn Active on';return}
   var ok=isFinite(fare)&&fare>=0&&miles>0;
   $('fare').textContent=isFinite(fare)?'£'+fare.toFixed(2):'£–';
   if(!ok){bar.className='bar empty';$('verdict').textContent='SET UP';$('perMile').textContent='–';$('details').textContent='fare and miles';return}
@@ -138,7 +173,7 @@ function signUp(){
   },function(){offline('signupNote')});
 }
 
-load();fromLink();calc();
+load();setActive(isActive());fromLink();
 if(window.supabase){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   sb.auth.getSession().then(function(r){return setSession(r.data.session)},function(){ready=true;go('home')});
@@ -149,6 +184,19 @@ if(window.supabase){
 
 document.querySelectorAll('.nav[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
 $('back').addEventListener('click',function(){go('home')});
+$('activeToggle').addEventListener('click',function(){setActive(!isActive())});
+$('copyScan').addEventListener('click',function(){
+  var link=location.origin+location.pathname+'?text=',n=$('scanNote');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(function(){n.textContent='Scan link copied: '+link},function(){n.textContent='Copy this link: '+link});
+  }else{n.textContent='Copy this link: '+link}
+});
+$('pasteForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var ok=applyOffer(parseOffer($('pasteText').value),'text'),n=$('pasteNote');
+  n.className='small'+(ok?'':' bad');n.textContent=$('detected').textContent;
+  if(ok){$('pasteText').value='';go('home')}
+});
 $('loginForm').addEventListener('submit',function(e){e.preventDefault();logIn()});
 $('signupForm').addEventListener('submit',function(e){e.preventDefault();signUp()});
 $('toSignup').addEventListener('click',function(){go('signup')});

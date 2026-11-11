@@ -17,6 +17,16 @@ h1{font-size:26px;font-weight:800;margin:0}
 .nav span{flex:1}
 .nav b{display:block;font-size:16px;font-weight:600}
 .nav small{color:#9898a0;font-size:12px}
+.switch::after{display:none}
+.switch i{width:50px;height:30px;border-radius:15px;background:#3a3a3c;position:relative;flex:none;transition:background .15s}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch[aria-checked=true] i{background:#34c759}
+.switch[aria-checked=true] i::after{transform:translateX(20px)}
+.detected{margin:-4px 0 12px}
+textarea{display:block;width:100%;margin-top:4px;padding:10px 12px;border-radius:12px;border:1px solid #3a3a3c;background:#2c2c2e;color:#fff;font:inherit;resize:vertical}
+#pasteForm{margin-top:20px}
+#pasteForm .primary{margin-top:12px}
+@media (prefers-reduced-motion:reduce){.switch i,.switch i::after{transition:none}}
 .nav::after{content:"\203A";color:#9898a0;font-size:22px}
 #form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 #loginForm label,#signupForm label,#passwordForm label{margin-bottom:12px}

@@ -28,13 +28,15 @@ Payments are not connected: nothing is charged when a trial ends.
 
 `fare-bar.mobileconfig` is an iOS configuration profile containing one Web Clip. Installing it adds the Fare Bar icon to the Home Screen and opens the app full screen. It changes no other settings and is not signed, so iOS shows it as "Not Signed". `vercel.json` serves it with the content type iOS expects.
 
-## Sending an order to the bar
+## Auto-detect and the Active switch
 
-Open the app with the numbers in the link and the bar fills itself:
+iOS does not let an app read another app's screen, so detection is one tap, not zero:
 
-`?fare=3.07&miles=1&mins=7.5`
+- A Shortcut takes a screenshot, extracts its text and opens `?text=<the text>`. The app finds the fare (largest £ amount), the distance (the one marked "total", otherwise all distances added; km is converted to miles) and the time (largest "min"), then works out the profit
+- `?fare=3.07&miles=1&mins=7.5` sends the numbers directly
+- The **Auto-detect** page has the Shortcut steps and a box to paste request text
+- **Active** on Home turns this on and off. When off, the bar shows OFF and incoming orders are ignored
 
-An iPhone Shortcut can build this link, so the bar can be filled without typing. The app cannot read other apps by itself.
 
 ## Screens
 
