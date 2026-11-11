@@ -21,7 +21,7 @@
 
   <p class="step" id="step" hidden></p>
 
-  <div class="bar none" id="bar" role="status" aria-live="polite" hidden>
+  <div class="bar none" id="bar" role="status" aria-live="polite" aria-label="Offer profit" hidden>
     <span>Rate</span><span>+</span><span>MILEAGE</span><span>=</span><span>profit+return</span>
     <span id="bRate">(3.07)</span><span>+</span><span id="bMiles">2.0</span><span>=</span><b id="bNet">2.78</b>
   </div>
@@ -55,7 +55,10 @@
   <section id="home" hidden>
     <button class="nav switch" id="activeToggle" role="switch" aria-checked="true"><span><b>Active</b><small id="activeNote">On: new orders update the bar</small></span><i aria-hidden="true"></i></button>
     <p class="small detected" id="detected" role="status" aria-live="polite" hidden></p>
-    <button class="primary" id="logNow">Log this delivery</button>
+    <div class="pair">
+      <button class="primary" id="logNow">Accepted · log it</button>
+      <button class="primary ghost" id="logDeclined">Declined</button>
+    </div>
     <p class="small" id="logNote" role="status" aria-live="polite"></p>
 
     <h2>Today</h2>
@@ -65,6 +68,7 @@
       <div><dt>Miles</dt><dd id="tMiles">0.0</dd></div>
       <div><dt>Per hour</dt><dd id="tHour">–</dd></div>
     </dl>
+    <ul class="split" id="split"></ul>
 
     <h2>Session</h2>
     <div class="card">
@@ -77,6 +81,7 @@
     <button class="primary ghost" id="exportCsv">Export CSV</button>
 
     <h2>Settings</h2>
+    <button class="nav" data-go="report"><span><b>Weekly report</b><small>Offers seen and accepted, profit per platform</small></span></button>
     <button class="nav" data-go="log"><span><b>Log delivery</b><small>Platform, rate, outbound and return miles, time</small></span></button>
     <button class="nav" data-go="cost"><span><b>Cost model</b><small>MPG, fuel price, target per hour, return miles</small></span></button>
     <button class="nav" data-go="auto"><span><b>Auto-detect</b><small>Read rate and miles from a delivery request</small></span></button>
@@ -87,12 +92,12 @@
 
   <section id="log" hidden>
     <form id="logForm" class="grid" autocomplete="off">
-      <label class="wide">Platform<input id="inPlatform" maxlength="40" placeholder="Uber Eats, Deliveroo, Just Eat…"></label>
+      <label class="wide">Platform<select id="inPlatform"><option>Uber Eats</option><option>Deliveroo</option><option>Other</option></select></label>
       <label>Delivery rate (£)<input id="inRate" inputmode="decimal" value="3.07"></label>
       <label>Time (minutes)<input id="inMins" inputmode="decimal" value="7.5"></label>
       <label>Outbound miles<input id="inOut" inputmode="decimal" value="1"></label>
       <label>Return miles to start<input id="inRet" inputmode="decimal" value="1"></label>
-      <button class="primary wide" type="submit">Save delivery</button>
+      <button class="primary wide" type="submit">Save as accepted</button>
     </form>
     <p class="small" id="breakdown"></p>
     <p class="small" id="logFormNote" role="status" aria-live="polite"></p>
@@ -100,15 +105,18 @@
 
   <section id="cost" hidden>
     <form id="costForm" class="grid" autocomplete="off">
+      <label class="wide">Vehicle<select id="cVehicle"><option value="car">Car</option><option value="scooter">Scooter or motorbike</option><option value="bike">Bike or e-bike</option></select></label>
       <label>Vehicle MPG<input id="cMpg" inputmode="decimal"></label>
       <label>Fuel price (£ per litre)<input id="cFuel" inputmode="decimal"></label>
       <label>Target (£ per hour)<input id="cTarget" inputmode="decimal"></label>
       <label>Your time cost (£ per hour)<input id="cOpp" inputmode="decimal"></label>
-      <label class="wide">Tax estimate (% of profit)<input id="cTax" inputmode="decimal"></label>
+      <label>Tax estimate (% of profit)<input id="cTax" inputmode="decimal"></label>
+      <label>Other running cost (p per mile)<input id="cRun" inputmode="decimal"></label>
+      <label class="wide">Expected Uber Eats tip (£ per order)<input id="cTip" inputmode="decimal"></label>
     </form>
     <button class="nav switch" id="assumeToggle" role="switch" aria-checked="true"><span><b>Assume return = outbound</b><small id="assumeNote">Return miles are filled in for you</small></span><i aria-hidden="true"></i></button>
     <p class="small" id="costLine"></p>
-    <p class="small">Net profit = rate − (outbound + return miles) × cost per mile − time cost − tax.</p>
+    <p class="small">Net profit = rate (+ expected tip on Uber Eats) − (outbound + return miles) × cost per mile − time cost − tax. Uber Eats offers exclude tips; Deliveroo fees are the full amount.</p>
   </section>
 
   <section id="auto" hidden>
@@ -116,7 +124,7 @@
     <ol>
       <li>Open the Shortcuts app and make a new shortcut called “Fare Bar scan”.</li>
       <li>Add these actions in order: “Take Screenshot”, “Extract Text from Image”, “URL Encode”.</li>
-      <li>Add “Open URLs” and set it to the scan link below, followed by the URL Encoded Text.</li>
+      <li>Add “Open URLs” and set it to the scan link below, followed by the URL Encoded Text. The text stays on your phone: it goes after a #, which is never sent to the server.</li>
       <li>In Settings → Accessibility → Touch → AssistiveTouch, set a Custom Action (for example Double-Tap) to the “Fare Bar scan” shortcut.</li>
       <li>When a request appears, do that tap. Fare Bar opens with the rate, miles and profit filled in.</li>
     </ol>
@@ -127,6 +135,15 @@
       <button class="primary ghost" type="submit">Detect from text</button>
     </form>
     <p class="small" id="pasteNote" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="report" hidden>
+    <p>The last 7 days, by platform. Declined offers count as seen, not in profit.</p>
+    <table class="report">
+      <thead><tr><th scope="col">Platform</th><th scope="col">Seen</th><th scope="col">Taken</th><th scope="col">Net</th><th scope="col">Per hour</th><th scope="col">Per mile</th></tr></thead>
+      <tbody id="reportRows"></tbody>
+    </table>
+    <button class="primary ghost" id="exportCsv2">Export CSV</button>
   </section>
 
   <section id="profile" hidden>

@@ -27,7 +27,7 @@ h2{font-size:13px;font-weight:700;color:#9898a0;text-transform:uppercase;letter-
 @media (prefers-reduced-motion:reduce){.switch i,.switch i::after{transition:none}}
 
 label{display:block;font-size:12px;color:#9898a0}
-input,textarea{display:block;width:100%;margin-top:4px;padding:0 12px;border-radius:12px;border:1px solid #3a3a3c;background:#2c2c2e;color:#fff;font:inherit;font-size:17px}
+input,textarea,select{display:block;width:100%;margin-top:4px;padding:0 12px;border-radius:12px;border:1px solid #3a3a3c;background:#2c2c2e;color:#fff;font:inherit;font-size:17px}
 input{min-height:46px}
 textarea{padding:10px 12px;font-size:15px;resize:vertical}
 input:disabled{opacity:.5}
@@ -82,3 +82,17 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
 .plan p{font-size:13px;margin:0 0 4px}
 .plan .primary{margin-top:10px}
 [hidden]{display:none!important}
+select{min-height:46px;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#9898a0 50%),linear-gradient(135deg,#9898a0 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.pair{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.split{list-style:none;margin:10px 0 0;padding:0 16px;background:#1c1c1e;border-radius:16px}
+.split li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #2c2c2e;font-variant-numeric:tabular-nums}
+.split li:first-child{border-top:0}
+.split li span{color:#9898a0}
+.split:empty{display:none}
+.report{width:100%;border-collapse:collapse;background:#1c1c1e;border-radius:16px;overflow:hidden;margin-bottom:16px;font-variant-numeric:tabular-nums;font-size:13px}
+.report th,.report td{padding:10px 6px;text-align:right;border-top:1px solid #2c2c2e}
+.report th:first-child,.report td:first-child{text-align:left;padding-left:12px}
+.report th:last-child,.report td:last-child{padding-right:12px}
+.report thead th{border-top:0;color:#9898a0;font-weight:600;font-size:12px}
+.report tr.total td{font-weight:800}
+.recent li.declined .what b,.recent li.declined .net{color:#9898a0;font-weight:600}
