@@ -19,6 +19,7 @@ Supabase project `fare-bar` (eu-west-2).
 
 - **Accounts** — Supabase Auth, email and password
 - **`public.trials`** — one row per user: `plan` and `started_at`. Row level security lets a signed-in user read and create only their own row; rows cannot be changed or deleted, and the start time is set by the database
+- **`public.owners`** — accounts that get everything free, with no trial or subscription. Only the project admin can add rows; a signed-in user can only see their own
 - The page ships the project URL and the **publishable** key only
 
 Payments are not connected: nothing is charged when a trial ends.

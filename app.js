@@ -5,7 +5,7 @@ var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
 var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
 var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
-var sb=null,session=null,trialRow=null,ready=false;
+var sb=null,session=null,trialRow=null,isOwner=false,ready=false;
 
 function num(id){return parseFloat($(id).value.replace(',','.'))}
 function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
@@ -36,7 +36,7 @@ function trial(){
 function gate(){
   if(!ready)return'loading';
   if(!session)return'login';
-  if(!trialRow)return'plans';
+  if(!trialRow&&!isOwner)return'plans';
   return null;
 }
 function go(view){
@@ -56,6 +56,15 @@ function go(view){
 }
 function showPlan(){
   var t=trial(),active=t&&t.left>0;
+  $('who').textContent=session&&session.user?session.user.email:'Go back to the login screen';
+  if(isOwner){
+    // Owner accounts get everything free: no trial and no subscription
+    $('badge').textContent='OWNER · FREE';
+    $('trialState').className='';
+    $('trialState').textContent='You are the owner. Everything is free for you, with no trial and no payment.';
+    document.querySelectorAll('.plan').forEach(function(c){var btn=c.querySelector('.trial');c.classList.remove('on');btn.disabled=true;btn.textContent='Free for the owner'});
+    return;
+  }
   $('badge').textContent=active?t.plan.toUpperCase()+' TRIAL · '+t.left+(t.left===1?' DAY':' DAYS'):t?'TRIAL ENDED':'FREE';
   $('trialState').className='';
   $('trialState').textContent=active?t.plan+' trial: '+t.left+(t.left===1?' day':' days')+' left.':t?'Your '+t.plan+' trial has ended.':'Both plans start with a 30-day free trial.';
@@ -70,8 +79,13 @@ function showPlan(){
 function note(id,text,bad){var n=$(id);n.textContent=text;n.className='small'+(bad?' bad':'')}
 
 function loadTrial(){
-  if(!session){trialRow=null;return Promise.resolve()}
-  return sb.from('trials').select('plan,started_at').eq('user_id',session.user.id).maybeSingle().then(function(r){trialRow=r.error?null:r.data});
+  trialRow=null;isOwner=false;
+  if(!session)return Promise.resolve();
+  var id=session.user.id;
+  return Promise.all([
+    sb.from('trials').select('plan,started_at').eq('user_id',id).maybeSingle(),
+    sb.from('owners').select('user_id').eq('user_id',id).maybeSingle()
+  ]).then(function(r){trialRow=r[0].error?null:r[0].data;isOwner=!r[1].error&&!!r[1].data});
 }
 function setSession(s){
   var changed=(s&&s.user.id)!==(session&&session.user.id);
@@ -126,7 +140,7 @@ $('toSignup').addEventListener('click',function(){go('signup')});
 $('toLogin').addEventListener('click',function(){go('login')});
 $('logout').addEventListener('click',function(){if(sb)sb.auth.signOut().then(function(){return setSession(null)})});
 document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('click',function(){
-  if(trialRow||!session)return;
+  if(trialRow||isOwner||!session)return;
   var onboarding=gate()==='plans';
   b.disabled=true;
   sb.from('trials').insert({user_id:session.user.id,plan:b.dataset.plan}).select('plan,started_at').single().then(function(r){
