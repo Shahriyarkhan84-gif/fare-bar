@@ -21,11 +21,11 @@
 
   <p class="step" id="step" hidden></p>
 
-  <div class="bar accept" id="bar" role="status" aria-live="polite" hidden>
-    <span class="verdict"><i></i><span id="verdict">ACCEPT</span></span>
-    <span class="fare" id="fare">£3.07</span>
-    <span class="stats"><b id="perMile">£2.05/mi</b><small id="details">1.0 mi · £24.56/hr</small></span>
+  <div class="bar none" id="bar" role="status" aria-live="polite" hidden>
+    <span>Rate</span><span>+</span><span>MILEAGE</span><span>=</span><span>profit+return</span>
+    <span id="bRate">(3.07)</span><span>+</span><span id="bMiles">2.0</span><span>=</span><b id="bNet">2.78</b>
   </div>
+  <p class="banner none" id="banner" role="status" aria-live="polite" hidden></p>
 
   <section id="loading"><p>Loading…</p></section>
 
@@ -55,21 +55,78 @@
   <section id="home" hidden>
     <button class="nav switch" id="activeToggle" role="switch" aria-checked="true"><span><b>Active</b><small id="activeNote">On: new orders update the bar</small></span><i aria-hidden="true"></i></button>
     <p class="small detected" id="detected" role="status" aria-live="polite" hidden></p>
-    <button class="nav" data-go="auto"><span><b>Auto-detect</b><small>Read fare and miles from a delivery request</small></span></button>
-    <button class="nav" data-go="config"><span><b>Configuration</b><small>Fare, miles, minutes and your minimum per mile</small></span></button>
+    <button class="primary" id="logNow">Log this delivery</button>
+    <p class="small" id="logNote" role="status" aria-live="polite"></p>
+
+    <h2>Today</h2>
+    <dl class="tiles">
+      <div><dt>Deliveries</dt><dd id="tCount">0</dd></div>
+      <div><dt>Net profit</dt><dd id="tNet">£0.00</dd></div>
+      <div><dt>Miles</dt><dd id="tMiles">0.0</dd></div>
+      <div><dt>Per hour</dt><dd id="tHour">–</dd></div>
+    </dl>
+
+    <h2>Session</h2>
+    <div class="card">
+      <p id="sessionLine">No session running.</p>
+      <button class="primary ghost" id="sessionBtn">Start session</button>
+    </div>
+
+    <h2>Recent deliveries</h2>
+    <ul class="recent" id="recent"><li class="empty">No deliveries logged yet.</li></ul>
+    <button class="primary ghost" id="exportCsv">Export CSV</button>
+
+    <h2>Settings</h2>
+    <button class="nav" data-go="log"><span><b>Log delivery</b><small>Platform, rate, outbound and return miles, time</small></span></button>
+    <button class="nav" data-go="cost"><span><b>Cost model</b><small>MPG, fuel price, target per hour, return miles</small></span></button>
+    <button class="nav" data-go="auto"><span><b>Auto-detect</b><small>Read rate and miles from a delivery request</small></span></button>
     <button class="nav" data-go="control"><span><b>Control Centre</b><small>Open the bar from your iPhone Control Centre</small></span></button>
     <button class="nav" data-go="plans"><span><b>Subscription</b><small>See plans</small></span></button>
     <button class="nav" data-go="profile"><span><b>Profile</b><small id="who">Your account, password and log out</small></span></button>
   </section>
 
-  <section id="config" hidden>
-    <form id="form" autocomplete="off">
-      <label>Fare (£)<input id="inFare" inputmode="decimal" value="3.07"></label>
-      <label>Miles<input id="inMiles" inputmode="decimal" value="1"></label>
-      <label>Minutes<input id="inMins" inputmode="decimal" value="7.5"></label>
-      <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
+  <section id="log" hidden>
+    <form id="logForm" class="grid" autocomplete="off">
+      <label class="wide">Platform<input id="inPlatform" maxlength="40" placeholder="Uber Eats, Deliveroo, Just Eat…"></label>
+      <label>Delivery rate (£)<input id="inRate" inputmode="decimal" value="3.07"></label>
+      <label>Time (minutes)<input id="inMins" inputmode="decimal" value="7.5"></label>
+      <label>Outbound miles<input id="inOut" inputmode="decimal" value="1"></label>
+      <label>Return miles to start<input id="inRet" inputmode="decimal" value="1"></label>
+      <button class="primary wide" type="submit">Save delivery</button>
     </form>
-    <p class="small">Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
+    <p class="small" id="breakdown"></p>
+    <p class="small" id="logFormNote" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="cost" hidden>
+    <form id="costForm" class="grid" autocomplete="off">
+      <label>Vehicle MPG<input id="cMpg" inputmode="decimal"></label>
+      <label>Fuel price (£ per litre)<input id="cFuel" inputmode="decimal"></label>
+      <label>Target (£ per hour)<input id="cTarget" inputmode="decimal"></label>
+      <label>Your time cost (£ per hour)<input id="cOpp" inputmode="decimal"></label>
+      <label class="wide">Tax estimate (% of profit)<input id="cTax" inputmode="decimal"></label>
+    </form>
+    <button class="nav switch" id="assumeToggle" role="switch" aria-checked="true"><span><b>Assume return = outbound</b><small id="assumeNote">Return miles are filled in for you</small></span><i aria-hidden="true"></i></button>
+    <p class="small" id="costLine"></p>
+    <p class="small">Net profit = rate − (outbound + return miles) × cost per mile − time cost − tax.</p>
+  </section>
+
+  <section id="auto" hidden>
+    <p>iPhone does not let any app read another app's screen. This shortcut does it with one tap: it takes a screenshot of the request, reads the text and sends it to Fare Bar.</p>
+    <ol>
+      <li>Open the Shortcuts app and make a new shortcut called “Fare Bar scan”.</li>
+      <li>Add these actions in order: “Take Screenshot”, “Extract Text from Image”, “URL Encode”.</li>
+      <li>Add “Open URLs” and set it to the scan link below, followed by the URL Encoded Text.</li>
+      <li>In Settings → Accessibility → Touch → AssistiveTouch, set a Custom Action (for example Double-Tap) to the “Fare Bar scan” shortcut.</li>
+      <li>When a request appears, do that tap. Fare Bar opens with the rate, miles and profit filled in.</li>
+    </ol>
+    <button class="primary" id="copyScan">Copy scan link</button>
+    <p class="small" id="scanNote" aria-live="polite"></p>
+    <form id="pasteForm">
+      <label>Or paste the request text here<textarea id="pasteText" rows="4" placeholder="£4.85 · 2.3 mi · 14 min"></textarea></label>
+      <button class="primary ghost" type="submit">Detect from text</button>
+    </form>
+    <p class="small" id="pasteNote" role="status" aria-live="polite"></p>
   </section>
 
   <section id="profile" hidden>
@@ -85,24 +142,6 @@
     </form>
     <p class="small" id="passwordNote" role="status" aria-live="polite"></p>
     <button class="primary ghost" type="button" id="logout">Log out</button>
-  </section>
-
-  <section id="auto" hidden>
-    <p>iPhone does not let any app read another app's screen. This shortcut does it with one tap: it takes a screenshot of the request, reads the text and sends it to Fare Bar.</p>
-    <ol>
-      <li>Open the Shortcuts app and make a new shortcut called “Fare Bar scan”.</li>
-      <li>Add these actions in order: “Take Screenshot”, “Extract Text from Image”, “URL Encode”.</li>
-      <li>Add “Open URLs” and set it to the scan link below, followed by the URL Encoded Text.</li>
-      <li>In Settings → Accessibility → Touch → AssistiveTouch, set a Custom Action (for example Double-Tap) to the “Fare Bar scan” shortcut.</li>
-      <li>When a request appears, do that tap. Fare Bar opens with the fare, miles and profit filled in.</li>
-    </ol>
-    <button class="primary" id="copyScan">Copy scan link</button>
-    <p class="small" id="scanNote" aria-live="polite"></p>
-    <form id="pasteForm">
-      <label>Or paste the request text here<textarea id="pasteText" rows="4" placeholder="£4.85 · 2.3 mi · 14 min"></textarea></label>
-      <button class="primary ghost" type="submit">Detect from text</button>
-    </form>
-    <p class="small" id="pasteNote" role="status" aria-live="polite"></p>
   </section>
 
   <section id="control" hidden>

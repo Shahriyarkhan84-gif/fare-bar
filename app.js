@@ -1,23 +1,88 @@
 var SUPABASE_URL='https://fitscgmzxggpobzulpbe.supabase.co';
 var SUPABASE_KEY='sb_publishable_uKwUj4XVuipFDdlI8NR8Pg_v0X3j84n'; // publishable key: safe to ship in the page
 var TRIAL_DAYS=30;
+var LITRES_PER_GALLON=4.54609; // UK gallon, to turn MPG and £ per litre into £ per mile
+var COST_DEFAULTS={mpg:45,fuel:1.45,target:15,opp:0,tax:0,assume:true};
 var $=function(id){return document.getElementById(id)};
-var ids=['inFare','inMiles','inMins','inMin'];
-var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',config:'Configuration',auto:'Auto-detect',profile:'Profile',control:'Control Centre',plans:'Subscription'};
+var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',log:'Log delivery',cost:'Cost model',auto:'Auto-detect',profile:'Profile',control:'Control Centre',plans:'Subscription'};
 var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
-var sb=null,session=null,trialRow=null,isOwner=false,ready=false;
+var OFFER_IDS=['inPlatform','inRate','inMins','inOut','inRet'];
+var COST_IDS={cMpg:'mpg',cFuel:'fuel',cTarget:'target',cOpp:'opp',cTax:'tax'};
+var sb=null,session=null,trialRow=null,isOwner=false,ready=false,deliveries=[];
 
-function num(id){return parseFloat($(id).value.replace(',','.'))}
-function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
-function save(){try{var s={};ids.forEach(function(id){s[id]=$(id).value});localStorage.setItem('fareBar',JSON.stringify(s))}catch(e){}}
-function isActive(){try{return localStorage.getItem('fareBarActive')!=='0'}catch(e){return true}}
+/* ---------- small helpers ---------- */
+function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function set(k,v){try{v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+function num(v){var n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:NaN}
+function money(n){return(n<0?'−£':'£')+Math.abs(n).toFixed(2)}
+function note(id,text,bad){var n=$(id);n.textContent=text;n.className='small'+(bad?' bad':'')}
+
+/* ---------- cost model and profit ---------- */
+function cost(){
+  var c={},saved={};
+  try{saved=JSON.parse(get('fareBarCost')||'{}')||{}}catch(e){}
+  Object.keys(COST_DEFAULTS).forEach(function(k){c[k]=saved[k]!=null?saved[k]:COST_DEFAULTS[k]});
+  return c;
+}
+function saveCost(c){set('fareBarCost',JSON.stringify(c))}
+function costPerMile(c){return c.mpg>0?c.fuel*LITRES_PER_GALLON/c.mpg:0}
+// Net profit = rate − (outbound + return miles) × cost per mile − time cost − tax
+function compute(o,c){
+  var ret=c.assume?o.out:o.ret,miles=o.out+ret,cpm=costPerMile(c);
+  var mileCost=miles*cpm,timeCost=o.mins>0?c.opp*o.mins/60:0,before=o.rate-mileCost-timeCost;
+  var tax=before>0?before*c.tax/100:0,net=before-tax;
+  var perHour=o.mins>0?net/o.mins*60:null,status='none';
+  if(perHour!==null)status=perHour>=c.target?'green':perHour>=c.target*0.7?'yellow':'red';
+  return{ret:ret,miles:miles,cpm:cpm,mileCost:mileCost,timeCost:timeCost,tax:tax,net:net,perHour:perHour,status:status,strong:perHour!==null&&perHour>=c.target*1.25};
+}
+function offer(){
+  return{platform:$('inPlatform').value.trim(),rate:num($('inRate').value),out:num($('inOut').value),ret:num($('inRet').value),mins:num($('inMins').value)||0};
+}
+function offerValid(o,c){return o.rate>=0&&o.out>=0&&(c.assume||o.ret>=0)&&(o.out>0||o.ret>0)}
+function loadOffer(){try{var s=JSON.parse(get('fareBarOffer')||'{}');OFFER_IDS.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
+function saveOffer(){var s={};OFFER_IDS.forEach(function(id){s[id]=$(id).value});set('fareBarOffer',JSON.stringify(s))}
+
+function isActive(){return get('fareBarActive')!=='0'}
 function setActive(on){
-  try{localStorage.setItem('fareBarActive',on?'1':'0')}catch(e){}
+  set('fareBarActive',on?'1':'0');
   $('activeToggle').setAttribute('aria-checked',on?'true':'false');
   $('activeNote').textContent=on?'On: new orders update the bar':'Off: new orders are ignored';
   calc();
 }
-// Reads a delivery request's text (from a screenshot) and finds the fare, distance and time.
+function calc(){
+  var c=cost(),o=offer(),bar=$('bar'),banner=$('banner');
+  $('inRet').disabled=c.assume;
+  if(c.assume&&o.out>=0)$('inRet').value=o.out;
+  if(!isActive()){
+    bar.className='bar none';$('bRate').textContent='(–)';$('bMiles').textContent='–';$('bNet').textContent='OFF';
+    banner.className='banner none';banner.textContent='Fare Bar is off. Turn Active on to see profit.';
+    $('breakdown').textContent='';return null;
+  }
+  if(!offerValid(o,c)){
+    bar.className='bar none';$('bRate').textContent='(–)';$('bMiles').textContent='–';$('bNet').textContent='–';
+    banner.className='banner none';banner.textContent='Enter a rate and miles to see profit.';
+    $('breakdown').textContent='';return null;
+  }
+  var r=compute(o,c);
+  bar.className='bar '+r.status;
+  $('bRate').textContent='('+o.rate.toFixed(2)+')';
+  $('bMiles').textContent=r.miles.toFixed(1);
+  $('bNet').textContent=r.net.toFixed(2);
+  banner.className='banner '+r.status;
+  banner.textContent=r.perHour===null?'Add the time to compare with your £'+c.target.toFixed(2)+' per hour target.':
+    (r.status==='green'?(r.strong?'Strong offer':'On target'):r.status==='yellow'?'Below target':'Low-value offer')+' · '+money(r.perHour)+'/hr vs £'+c.target.toFixed(2)+' target';
+  $('breakdown').textContent='Rate '+money(o.rate)+' − mileage '+money(r.mileCost)+' ('+r.miles.toFixed(1)+' mi × '+(r.cpm*100).toFixed(1)+'p)'+(r.timeCost?' − time '+money(r.timeCost):'')+(r.tax?' − tax '+money(r.tax):'')+' = net '+money(r.net)+'.';
+  return{o:o,r:r};
+}
+function showCost(){
+  var c=cost();
+  Object.keys(COST_IDS).forEach(function(id){if(document.activeElement!==$(id))$(id).value=c[COST_IDS[id]]});
+  $('assumeToggle').setAttribute('aria-checked',c.assume?'true':'false');
+  $('assumeNote').textContent=c.assume?'Return miles are filled in for you':'You enter return miles yourself';
+  $('costLine').textContent='Fuel costs you '+(costPerMile(c)*100).toFixed(1)+'p per mile ('+c.mpg+' mpg at £'+Number(c.fuel).toFixed(2)+' per litre).';
+}
+
+/* ---------- reading a delivery request ---------- */
 function parseOffer(text){
   var t=String(text||'').replace(/(\d),(\d)/g,'$1.$2'),m,out={};
   var fares=[],re=/£\s*(\d+(?:\.\d{1,2})?)/g;
@@ -34,36 +99,86 @@ function parseOffer(text){
 function applyOffer(o,source){
   var n=$('detected');n.hidden=false;
   if(!isActive()){n.className='small detected bad';n.textContent='Fare Bar is off, so that order was ignored.';return false}
-  if(!(o.fare>=0)||!(o.miles>0)){n.className='small detected bad';n.textContent='Could not find a fare and a distance in that '+source+'.';return false}
-  $('inFare').value=o.fare;$('inMiles').value=o.miles;$('inMins').value=o.mins>0?o.mins:'';
-  save();calc();
+  if(!(o.fare>=0)||!(o.miles>0)){n.className='small detected bad';n.textContent='Could not find a rate and a distance in that '+source+'.';return false}
+  $('inRate').value=o.fare;$('inOut').value=o.miles;$('inMins').value=o.mins>0?o.mins:'';
+  saveOffer();calc();
   n.className='small detected';
-  n.textContent='Detected from '+source+': £'+o.fare.toFixed(2)+' · '+o.miles+' mi'+(o.mins>0?' · '+o.mins+' min':'')+'.';
+  n.textContent='Detected from '+source+': £'+o.fare.toFixed(2)+' · '+o.miles+' mi outbound'+(o.mins>0?' · '+o.mins+' min':'')+'.';
   return true;
 }
 function fromLink(){
   // ?text=... carries the text of a request screenshot; ?fare=3.07&miles=1&mins=7.5 carries the numbers directly
   var q=new URLSearchParams(location.search),o={},has=false;
   if(q.get('text')){o=parseOffer(q.get('text'));has=true}
-  else['fare','miles','mins'].forEach(function(k){var v=parseFloat((q.get(k)||'').replace(',','.'));if(isFinite(v)&&v>=0){o[k]=v;has=true}});
+  else['fare','miles','mins'].forEach(function(k){var v=num(q.get(k)||'');if(v>=0){o[k]=v;has=true}});
   if(!has)return;
   history.replaceState(null,'',location.pathname+location.hash);
   applyOffer(o,q.get('text')?'screenshot':'link');
 }
-function calc(){
-  var fare=num('inFare'),miles=num('inMiles'),mins=num('inMins'),min=num('inMin'),bar=$('bar');
-  if(!isActive()){bar.className='bar empty';$('verdict').textContent='OFF';$('fare').textContent='£–';$('perMile').textContent='–';$('details').textContent='turn Active on';return}
-  var ok=isFinite(fare)&&fare>=0&&miles>0;
-  $('fare').textContent=isFinite(fare)?'£'+fare.toFixed(2):'£–';
-  if(!ok){bar.className='bar empty';$('verdict').textContent='SET UP';$('perMile').textContent='–';$('details').textContent='fare and miles';return}
-  var perMile=fare/(miles*1.5);
-  var accept=!isFinite(min)||perMile>=min;
-  bar.className='bar '+(accept?'accept':'reject');
-  $('verdict').textContent=accept?'ACCEPT':'REJECT';
-  $('perMile').textContent='£'+perMile.toFixed(2)+'/mi';
-  $('details').textContent=miles.toFixed(1)+' mi'+(mins>0?' · £'+(fare/mins*60).toFixed(2)+'/hr':'');
+
+/* ---------- deliveries, today and session ---------- */
+function loadDeliveries(){
+  if(!session){deliveries=[];return Promise.resolve()}
+  return sb.from('deliveries').select('*').order('created_at',{ascending:false}).limit(500).then(function(r){deliveries=r.error?[]:r.data});
+}
+function totals(rows){
+  var t={count:rows.length,net:0,miles:0,mins:0};
+  rows.forEach(function(d){t.net+=Number(d.net);t.miles+=Number(d.outbound_miles)+Number(d.return_miles);t.mins+=Number(d.minutes)});
+  t.perHour=t.mins>0?t.net/t.mins*60:null;
+  return t;
+}
+function showDeliveries(){
+  var c=cost(),start=new Date();start.setHours(0,0,0,0);
+  var today=totals(deliveries.filter(function(d){return new Date(d.created_at)>=start}));
+  $('tCount').textContent=today.count;$('tNet').textContent=money(today.net);$('tMiles').textContent=today.miles.toFixed(1);
+  $('tHour').textContent=today.perHour===null?'–':money(today.perHour);
+  var s=get('fareBarSession'),line=$('sessionLine');
+  if(s){
+    var st=totals(deliveries.filter(function(d){return new Date(d.created_at)>=new Date(s)}));
+    var since=new Date(s).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    var below=st.perHour!==null&&st.perHour<c.target;
+    line.textContent='Since '+since+': '+st.count+(st.count===1?' delivery':' deliveries')+', '+money(st.net)+' net'+(st.perHour===null?'.':', '+money(st.perHour)+'/hr.')+(below?' Below your £'+c.target.toFixed(2)+' target pace.':'');
+    line.className=below?'bad':'';
+    $('sessionBtn').textContent='End session';
+  }else{line.textContent='No session running.';line.className='';$('sessionBtn').textContent='Start session'}
+  var list=$('recent');list.textContent='';
+  if(!deliveries.length){var e=document.createElement('li');e.className='empty';e.textContent='No deliveries logged yet.';list.appendChild(e)}
+  deliveries.slice(0,5).forEach(function(d){
+    var li=document.createElement('li'),what=document.createElement('span'),b=document.createElement('b'),sm=document.createElement('small'),net=document.createElement('span'),del=document.createElement('button');
+    var miles=Number(d.outbound_miles)+Number(d.return_miles),ph=Number(d.minutes)>0?Number(d.net)/Number(d.minutes)*60:null;
+    what.className='what';b.textContent=d.platform||'Delivery';
+    sm.textContent='('+Number(d.rate).toFixed(2)+')+ '+miles.toFixed(1)+' · '+new Date(d.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    what.appendChild(b);what.appendChild(sm);
+    net.className='net '+(ph===null?'none':ph>=c.target?'green':ph>=c.target*0.7?'yellow':'red');net.textContent=money(Number(d.net));
+    del.className='del';del.type='button';del.textContent='×';del.setAttribute('aria-label','Delete this delivery');del.dataset.id=d.id;
+    li.appendChild(what);li.appendChild(net);li.appendChild(del);list.appendChild(li);
+  });
+  $('exportCsv').disabled=!deliveries.length;
+}
+function logDelivery(noteId){
+  var calcd=calc(),c=cost();
+  if(!session)return Promise.resolve(false);
+  if(!calcd){note(noteId,isActive()?'Enter a rate and miles first.':'Turn Active on first.',true);return Promise.resolve(false)}
+  var o=calcd.o,r=calcd.r;
+  note(noteId,'Saving…');
+  return sb.from('deliveries').insert({user_id:session.user.id,platform:o.platform.slice(0,40),rate:o.rate.toFixed(2),outbound_miles:o.out.toFixed(2),return_miles:r.ret.toFixed(2),minutes:o.mins.toFixed(1),cost_per_mile:r.cpm.toFixed(4),time_cost:r.timeCost.toFixed(2),tax:r.tax.toFixed(2),net:r.net.toFixed(2)}).select().single().then(function(res){
+    if(res.error){note(noteId,'Could not save: '+res.error.message,true);return false}
+    deliveries.unshift(res.data);showDeliveries();
+    note(noteId,'Delivery logged: '+money(Number(res.data.net))+' net.');
+    return true;
+  },function(){note(noteId,'Could not reach the server. Check your connection and try again.',true);return false});
+}
+function exportCsv(){
+  var head=['date','platform','rate','outbound_miles','return_miles','minutes','cost_per_mile','time_cost','tax','net'];
+  var q=function(v){v=String(v==null?'':v);if(/^[=+\-@]/.test(v))v="'"+v;return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  var rows=deliveries.map(function(d){return[d.created_at,d.platform,d.rate,d.outbound_miles,d.return_miles,d.minutes,d.cost_per_mile,d.time_cost,d.tax,d.net].map(q).join(',')});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([head.join(',')+'\n'+rows.join('\n')+'\n'],{type:'text/csv'}));
+  a.download='fare-bar-deliveries.csv';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
 }
 
+/* ---------- account, plan and pages ---------- */
 function trial(){
   if(!trialRow)return null;
   return{plan:trialRow.plan,left:TRIAL_DAYS-Math.floor((Date.now()-new Date(trialRow.started_at).getTime())/864e5)};
@@ -85,13 +200,15 @@ function go(view){
   if(STEPS[g])$('step').textContent=STEPS[g][0];
   $('badge').hidden=view!=='home';
   $('back').hidden=view==='home'||!!g;
-  $('bar').hidden=view!=='home'&&view!=='config';
+  var showBar=view==='home'||view==='log'||view==='cost';
+  $('bar').hidden=!showBar;$('banner').hidden=!showBar;
+  if(view==='cost')showCost();
+  if(view==='home')showDeliveries();
   history.replaceState(null,'',view==='signup'?'#signup':view==='home'||g?location.pathname:'#'+view);
   window.scrollTo(0,0);
 }
 function showPlan(){
-  var t=trial(),active=t&&t.left>0;
-  var u=session&&session.user;
+  var t=trial(),active=t&&t.left>0,u=session&&session.user;
   $('who').textContent=u?u.email:'Your account, password and log out';
   $('pEmail').textContent=u?u.email:'–';
   $('pSince').textContent=u&&u.created_at?new Date(u.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'–';
@@ -114,22 +231,21 @@ function showPlan(){
     btn.textContent=mine?'Trial running':t?(c.dataset.plan===t.plan?'Trial used':'Trial already used'):'Start 30-day free trial';
   });
 }
-function note(id,text,bad){var n=$(id);n.textContent=text;n.className='small'+(bad?' bad':'')}
-
-function loadTrial(){
-  trialRow=null;isOwner=false;
+function loadAccount(){
+  trialRow=null;isOwner=false;deliveries=[];
   if(!session)return Promise.resolve();
   var id=session.user.id;
   return Promise.all([
     sb.from('trials').select('plan,started_at').eq('user_id',id).maybeSingle(),
-    sb.from('owners').select('user_id').eq('user_id',id).maybeSingle()
+    sb.from('owners').select('user_id').eq('user_id',id).maybeSingle(),
+    loadDeliveries()
   ]).then(function(r){trialRow=r[0].error?null:r[0].data;isOwner=!r[1].error&&!!r[1].data});
 }
 function setSession(s){
   var changed=(s&&s.user.id)!==(session&&session.user.id);
   session=s;
   if(!changed&&ready)return Promise.resolve();
-  return loadTrial().then(function(){ready=true;showPlan();go(location.hash.slice(1))});
+  return loadAccount().then(function(){ready=true;showPlan();go(location.hash.slice(1))});
 }
 function busy(on){['doLogin','toSignup','email','password','doSignup','toLogin','newEmail','newPassword','newPassword2'].forEach(function(id){$(id).disabled=on})}
 function offline(id){busy(false);note(id,'Could not reach the login service. Check your connection and try again.',true)}
@@ -172,8 +288,15 @@ function signUp(){
     note('authNote','Account created. Open the confirmation email we sent to '+email+', then log in here.');
   },function(){offline('signupNote')});
 }
+function copyLink(link,noteId,label){
+  var n=$(noteId);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(function(){n.textContent=label+' copied: '+link},function(){n.textContent='Copy this link: '+link});
+  }else{n.textContent='Copy this link: '+link}
+}
 
-load();setActive(isActive());fromLink();
+/* ---------- start ---------- */
+loadOffer();setActive(isActive());fromLink();
 if(window.supabase){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   sb.auth.getSession().then(function(r){return setSession(r.data.session)},function(){ready=true;go('home')});
@@ -185,17 +308,28 @@ if(window.supabase){
 document.querySelectorAll('.nav[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
 $('back').addEventListener('click',function(){go('home')});
 $('activeToggle').addEventListener('click',function(){setActive(!isActive())});
-$('copyScan').addEventListener('click',function(){
-  var link=location.origin+location.pathname+'?text=',n=$('scanNote');
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(link).then(function(){n.textContent='Scan link copied: '+link},function(){n.textContent='Copy this link: '+link});
-  }else{n.textContent='Copy this link: '+link}
+$('assumeToggle').addEventListener('click',function(){var c=cost();c.assume=!c.assume;saveCost(c);showCost();calc();saveOffer()});
+$('costForm').addEventListener('input',function(){
+  var c=cost();
+  Object.keys(COST_IDS).forEach(function(id){var v=num($(id).value);if(v>=0)c[COST_IDS[id]]=v});
+  saveCost(c);showCost();calc();
 });
-$('pasteForm').addEventListener('submit',function(e){
+$('costForm').addEventListener('submit',function(e){e.preventDefault()});
+$('logForm').addEventListener('input',function(){calc();saveOffer()});
+$('logForm').addEventListener('submit',function(e){
   e.preventDefault();
-  var ok=applyOffer(parseOffer($('pasteText').value),'text'),n=$('pasteNote');
-  n.className='small'+(ok?'':' bad');n.textContent=$('detected').textContent;
-  if(ok){$('pasteText').value='';go('home')}
+  logDelivery('logFormNote').then(function(ok){if(ok){note('logNote',$('logFormNote').textContent);note('logFormNote','');go('home')}});
+});
+$('logNow').addEventListener('click',function(){logDelivery('logNote')});
+$('sessionBtn').addEventListener('click',function(){set('fareBarSession',get('fareBarSession')?null:new Date().toISOString());showDeliveries()});
+$('exportCsv').addEventListener('click',exportCsv);
+$('recent').addEventListener('click',function(e){
+  var b=e.target.closest('.del');
+  if(!b||!confirm('Delete this delivery?'))return;
+  sb.from('deliveries').delete().eq('id',b.dataset.id).then(function(r){
+    if(r.error){note('logNote','Could not delete: '+r.error.message,true);return}
+    deliveries=deliveries.filter(function(d){return d.id!==b.dataset.id});showDeliveries();note('logNote','Delivery deleted.');
+  });
 });
 $('loginForm').addEventListener('submit',function(e){e.preventDefault();logIn()});
 $('signupForm').addEventListener('submit',function(e){e.preventDefault();signUp()});
@@ -212,11 +346,11 @@ document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('clic
     trialRow=r.data;showPlan();if(onboarding)go('home');
   });
 })});
-$('form').addEventListener('input',function(){calc();save()});
-$('form').addEventListener('submit',function(e){e.preventDefault()});
-$('copy').addEventListener('click',function(){
-  var link=location.origin+location.pathname,n=$('copyNote');
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(link).then(function(){n.textContent='Link copied: '+link},function(){n.textContent='Copy this link: '+link});
-  }else{n.textContent='Copy this link: '+link}
+$('copy').addEventListener('click',function(){copyLink(location.origin+location.pathname,'copyNote','Link')});
+$('copyScan').addEventListener('click',function(){copyLink(location.origin+location.pathname+'?text=','scanNote','Scan link')});
+$('pasteForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var ok=applyOffer(parseOffer($('pasteText').value),'text');
+  note('pasteNote',$('detected').textContent,!ok);
+  if(ok){$('pasteText').value='';go('home')}
 });

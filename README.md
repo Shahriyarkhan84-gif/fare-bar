@@ -1,55 +1,72 @@
 # Fare Bar
 
-A slim fare bar app for delivery drivers. Plain HTML, CSS and JavaScript with no build step:
+A delivery driver profit analyser, built to PRD v3 ("Delivery Driver Profit Analyzer") as a web app. Plain HTML, CSS and JavaScript with no build step:
 
 - `index.html` — the pages
 - `styles.css` — the look
-- `app.js` — the maths, login and trial
+- `app.js` — the profit maths, delivery log, login and trial
 
-## First run
+Live at https://fare-bar.vercel.app
 
-1. **Log in** or **Create account** — email and password (Supabase Auth). The Create account page asks for the password twice; new accounts confirm by email, then log in
-2. **Choose a plan** — start a 30-day free trial of Pro or Unlimited
+## Profit model
 
-After that the app opens on Home. Log out returns to step 1.
+Net profit = rate − (outbound + return miles) × cost per mile − time cost − tax
 
-## Backend
+- **Cost per mile** = fuel price per litre × 4.54609 ÷ MPG (UK gallon)
+- **Time cost** = your time cost per hour × minutes ÷ 60
+- **Tax** = tax estimate % of the profit, when the profit is positive
+- **Assume return = outbound** fills in the return miles
 
-Supabase project `fare-bar` (eu-west-2).
+The bar always shows two lines: `Rate + MILEAGE = profit+return` and `(rate) + total miles = net profit`.
 
-- **Accounts** — Supabase Auth, email and password
-- **`public.trials`** — one row per user: `plan` and `started_at`. Row level security lets a signed-in user read and create only their own row; rows cannot be changed or deleted, and the start time is set by the database
-- **`public.owners`** — accounts that get everything free, with no trial or subscription. Only the project admin can add rows; a signed-in user can only see their own
-- The page ships the project URL and the **publishable** key only
+Status compares net profit per hour with your target: green at or above target (a "Strong offer" from 125%), yellow from 70%, red below that.
 
-Payments are not connected: nothing is charged when a trial ends.
+## PRD coverage
 
-## Install on iPhone
+| ID | Requirement | Status |
+|---|---|---|
+| FR-01 | AssistiveTouch $ button opens the bar | Partly: AssistiveTouch runs a Shortcut that opens the app; a web app cannot float over other apps |
+| FR-02 | Two-line bar with equals sign | Done |
+| FR-03 | Outbound + return-to-start mileage | Done |
+| FR-04 | Log Delivery | Done |
+| FR-05 | Live Activity / Dynamic Island | Not possible in a web app |
+| FR-06 | "Assume return = outbound" toggle | Done |
+| FR-07 | Session with running net profit | Done |
+| FR-08 | Dashboard: today totals, recent deliveries | Done |
+| FR-09 | Cost model (MPG, fuel, target per hour) | Done |
+| FR-10 | Banners: low offer, strong offer, below target | Done, inside the app |
+| FR-11 | Export CSV | Done |
+| FR-12 | Dynamic Type, VoiceOver | Partly: labelled controls and live regions; not tested with VoiceOver |
 
-`fare-bar.mobileconfig` is an iOS configuration profile containing one Web Clip. Installing it adds the Fare Bar icon to the Home Screen and opens the app full screen. It changes no other settings and is not signed, so iOS shows it as "Not Signed". `vercel.json` serves it with the content type iOS expects.
+## Pages
+
+- **Home** — Active switch, the bar and its banner, "Log this delivery", today's totals, session, recent deliveries, Export CSV
+- **Log delivery** — platform, rate, outbound and return miles, time
+- **Cost model** — MPG, fuel price, target per hour, time cost, tax estimate, assume-return toggle
+- **Auto-detect** — Shortcut steps and a box to paste request text
+- **Control Centre** — Shortcut steps, copy app link, install the Home Screen icon
+- **Subscription** — Pro and Unlimited, each with a 30-day free trial (sample prices, no payments)
+- **Profile** — email, plan, join date, change password, log out
 
 ## Auto-detect and the Active switch
 
 iOS does not let an app read another app's screen, so detection is one tap, not zero:
 
-- A Shortcut takes a screenshot, extracts its text and opens `?text=<the text>`. The app finds the fare (largest £ amount), the distance (the one marked "total", otherwise all distances added; km is converted to miles) and the time (largest "min"), then works out the profit
+- A Shortcut takes a screenshot, extracts its text and opens `?text=<the text>`. The app finds the rate (largest £ amount), the outbound distance (the one marked "total", otherwise all distances added; km is converted to miles) and the time (largest "min")
 - `?fare=3.07&miles=1&mins=7.5` sends the numbers directly
-- The **Auto-detect** page has the Shortcut steps and a box to paste request text
 - **Active** on Home turns this on and off. When off, the bar shows OFF and incoming orders are ignored
 
+## Install on iPhone
 
-## Screens
+`fare-bar.mobileconfig` is an iOS configuration profile containing one Web Clip. Installing it adds the Fare Bar icon to the Home Screen and opens the app full screen. It changes no other settings and is not signed, so iOS shows it as "Not Signed". `vercel.json` serves it with the content type iOS expects.
 
-- **Home** — the fare bar, plus buttons for Configuration, Control Centre and Subscription
-- **Profile** — your email, plan and join date, change password, and log out
-- **Configuration** — type the fare, miles, minutes and your minimum per mile
-- **Control Centre** — steps to add an iPhone Control Centre button that opens the app, and a button to copy the app link
-- **Subscription** — Pro and Unlimited plans, each with a 30-day free trial saved to the account. Prices are samples and payments are not connected
+## Backend
 
-## Maths
+Supabase project `fare-bar` (eu-west-2). The page ships the project URL and the **publishable** key only. Every table has row level security.
 
-- **Per mile** = fare ÷ (miles × 1.5) — the extra half covers the return trip
-- **Per hour** = fare ÷ minutes × 60
-- **ACCEPT / REJECT** — accept when per mile is at or above your minimum (default £1.50)
+- **Accounts** — Supabase Auth, email and password
+- **`public.deliveries`** — logged deliveries; a signed-in user can read, add and delete only their own
+- **`public.trials`** — one row per user: `plan` and `started_at`; owner-readable, insert-once, never changed, start time set by the database
+- **`public.owners`** — accounts that get everything free; only the project admin can add rows
 
-Your fare numbers are remembered on the device.
+The cost model, the current offer, the session start and the Active switch are remembered on the device.
