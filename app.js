@@ -10,6 +10,7 @@ var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']}
 var OFFER_IDS=['inPlatform','inRate','inMins','inOut','inRet'];
 var COST_IDS={cMpg:'mpg',cFuel:'fuel',cRun:'run',cTip:'tip',cTarget:'target',cOpp:'opp',cTax:'tax'};
 var sb=null,session=null,trialRow=null,isOwner=false,ready=false,deliveries=[],pendingView=null;
+var offerCame=false; // Home shows the offer pill only after an order pops up (a scan or link brought one in)
 
 /* ---------- small helpers ---------- */
 function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
@@ -49,6 +50,8 @@ function isActive(){return get('fareBarActive')!=='0'}
 function setActive(on){
   set('fareBarActive',on?'1':'0');
   $('activeToggle').setAttribute('aria-checked',on?'true':'false');
+  if(!on)offerCame=false;
+  if($('home')&&!$('home').hidden){$('bar').hidden=!(offerCame&&on);$('banner').hidden=$('bar').hidden}
   $('activeNote').textContent=on?'On: new orders update the bar':'Off: new orders are ignored';
   calc();
 }
@@ -120,6 +123,7 @@ function applyOffer(o,source){
   }
   $('inOut').value=o.miles;
   saveOffer();calc();
+  offerCame=true;
   $('kicker').textContent='New offer detected';
   n.className='small detected';
   n.textContent='Detected '+(o.platform||'offer')+' from '+source+': £'+o.fare.toFixed(2)+' · '+o.miles+' mi outbound'+(o.mins>0?' · '+o.mins+' min':'')+'.';
@@ -268,7 +272,7 @@ function go(view){
   if(STEPS[g])$('step').textContent=STEPS[g][0];
   $('badge').hidden=view!=='home';
   $('back').hidden=view==='home'||!!g;
-  var showBar=view==='home'||view==='log'||view==='cost';
+  var showBar=(view==='home'&&offerCame&&isActive())||view==='log'||view==='cost';
   $('bar').hidden=!showBar;$('banner').hidden=!showBar;$('earlier').hidden=view!=='home';
   if(view==='cost')showCost();
   if(view==='home')showDeliveries();
