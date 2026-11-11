@@ -3,7 +3,7 @@ var SUPABASE_KEY='sb_publishable_uKwUj4XVuipFDdlI8NR8Pg_v0X3j84n'; // publishabl
 var TRIAL_DAYS=30;
 var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
-var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
+var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',config:'Configuration',profile:'Profile',control:'Control Centre',plans:'Subscription'};
 var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
 var sb=null,session=null,trialRow=null,isOwner=false,ready=false;
 
@@ -56,7 +56,11 @@ function go(view){
 }
 function showPlan(){
   var t=trial(),active=t&&t.left>0;
-  $('who').textContent=session&&session.user?session.user.email:'Go back to the login screen';
+  var u=session&&session.user;
+  $('who').textContent=u?u.email:'Your account, password and log out';
+  $('pEmail').textContent=u?u.email:'–';
+  $('pSince').textContent=u&&u.created_at?new Date(u.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'–';
+  $('pPlan').textContent=isOwner?'Owner · everything free':active?t.plan+' trial · '+t.left+(t.left===1?' day left':' days left'):t?t.plan+' trial ended':'No plan yet';
   if(isOwner){
     // Owner accounts get everything free: no trial and no subscription
     $('badge').textContent='OWNER · FREE';
@@ -74,7 +78,6 @@ function showPlan(){
     btn.disabled=!!t;
     btn.textContent=mine?'Trial running':t?(c.dataset.plan===t.plan?'Trial used':'Trial already used'):'Start 30-day free trial';
   });
-  $('who').textContent=session&&session.user?session.user.email:'Go back to the login screen';
 }
 function note(id,text,bad){var n=$(id);n.textContent=text;n.className='small'+(bad?' bad':'')}
 
@@ -105,6 +108,18 @@ function logIn(){
     $('password').value='';note('authNote','');
     return setSession(r.data.session);
   },function(){offline('authNote')});
+}
+function changePassword(){
+  var p1=$('pw1').value,p2=$('pw2').value;
+  if(p1.length<6){note('passwordNote','Use a password of at least 6 characters.',true);return}
+  if(p1!==p2){note('passwordNote','The two passwords do not match.',true);return}
+  $('doPassword').disabled=true;note('passwordNote','Changing your password…');
+  sb.auth.updateUser({password:p1}).then(function(r){
+    $('doPassword').disabled=false;
+    if(r.error){note('passwordNote',r.error.message,true);return}
+    $('pw1').value='';$('pw2').value='';
+    note('passwordNote','Password changed. Use the new one next time you log in.');
+  },function(){$('doPassword').disabled=false;note('passwordNote','Could not reach the login service. Check your connection and try again.',true)});
 }
 function signUp(){
   var email=$('newEmail').value.trim(),p1=$('newPassword').value,p2=$('newPassword2').value;
@@ -138,6 +153,7 @@ $('loginForm').addEventListener('submit',function(e){e.preventDefault();logIn()}
 $('signupForm').addEventListener('submit',function(e){e.preventDefault();signUp()});
 $('toSignup').addEventListener('click',function(){go('signup')});
 $('toLogin').addEventListener('click',function(){go('login')});
+$('passwordForm').addEventListener('submit',function(e){e.preventDefault();changePassword()});
 $('logout').addEventListener('click',function(){if(sb)sb.auth.signOut().then(function(){return setSession(null)})});
 document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('click',function(){
   if(trialRow||isOwner||!session)return;

@@ -54,7 +54,7 @@
     <button class="nav" data-go="config"><span><b>Configuration</b><small>Fare, miles, minutes and your minimum per mile</small></span></button>
     <button class="nav" data-go="control"><span><b>Control Centre</b><small>Open the bar from your iPhone Control Centre</small></span></button>
     <button class="nav" data-go="plans"><span><b>Subscription</b><small>See plans</small></span></button>
-    <button class="nav" id="logout"><span><b>Log out</b><small id="who">Go back to the login screen</small></span></button>
+    <button class="nav" data-go="profile"><span><b>Profile</b><small id="who">Your account, password and log out</small></span></button>
   </section>
 
   <section id="config" hidden>
@@ -65,6 +65,21 @@
       <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
     </form>
     <p class="small">Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
+  </section>
+
+  <section id="profile" hidden>
+    <dl class="facts">
+      <div><dt>Email</dt><dd id="pEmail">–</dd></div>
+      <div><dt>Plan</dt><dd id="pPlan">–</dd></div>
+      <div><dt>Member since</dt><dd id="pSince">–</dd></div>
+    </dl>
+    <form id="passwordForm">
+      <label>New password<input id="pw1" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label>Confirm new password<input id="pw2" type="password" autocomplete="new-password" minlength="6" required></label>
+      <button class="primary" type="submit" id="doPassword">Change password</button>
+    </form>
+    <p class="small" id="passwordNote" role="status" aria-live="polite"></p>
+    <button class="primary ghost" type="button" id="logout">Log out</button>
   </section>
 
   <section id="control" hidden>

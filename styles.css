@@ -19,8 +19,13 @@ h1{font-size:26px;font-weight:800;margin:0}
 .nav small{color:#9898a0;font-size:12px}
 .nav::after{content:"\203A";color:#9898a0;font-size:22px}
 #form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-#loginForm label,#signupForm label{margin-bottom:12px}
-#loginForm .primary,#signupForm .primary{margin-top:16px}
+#loginForm label,#signupForm label,#passwordForm label{margin-bottom:12px}
+#loginForm .primary,#signupForm .primary,#passwordForm .primary{margin-top:16px}
+.facts{margin:0 0 20px;background:#1c1c1e;border-radius:16px;padding:4px 16px}
+.facts div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #2c2c2e}
+.facts div:first-child{border-top:0}
+.facts dt{color:#9898a0}
+.facts dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .ghost{background:#2c2c2e;color:#fff}
 .bad{color:#ff6e54}
 .step{font-size:12px;font-weight:700;color:#5cff5c;margin:-8px 0 12px}

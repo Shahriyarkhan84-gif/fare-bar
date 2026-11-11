@@ -35,6 +35,7 @@ An iPhone Shortcut can build this link, so the bar can be filled without typing.
 ## Screens
 
 - **Home** — the fare bar, plus buttons for Configuration, Control Centre and Subscription
+- **Profile** — your email, plan and join date, change password, and log out
 - **Configuration** — type the fare, miles, minutes and your minimum per mile
 - **Control Centre** — steps to add an iPhone Control Centre button that opens the app, and a button to copy the app link
 - **Subscription** — Pro and Unlimited plans, each with a 30-day free trial saved to the account. Prices are samples and payments are not connected
