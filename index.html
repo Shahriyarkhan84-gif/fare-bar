@@ -28,7 +28,11 @@ h1{font-size:26px;font-weight:800;margin:0}
 .nav b{display:block;font-size:16px;font-weight:600}
 .nav small{color:#9898a0;font-size:12px}
 .nav::after{content:"\203A";color:#9898a0;font-size:22px}
-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#loginForm label{margin-bottom:12px}
+#loginForm .primary,#finish{margin-top:16px}
+.step{font-size:12px;font-weight:700;color:#5cff5c;margin:-8px 0 12px}
+input:disabled{opacity:.5}
 label{display:block;font-size:12px;color:#9898a0}
 input{display:block;width:100%;margin-top:4px;min-height:46px;padding:0 12px;border-radius:12px;border:1px solid #3a3a3c;background:#2c2c2e;color:#fff;font:inherit;font-size:17px}
 input:focus-visible,button:focus-visible{outline:2px solid #5cff5c;outline-offset:2px}
@@ -57,16 +61,30 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
     <button class="back" id="back" hidden>Done</button>
   </header>
 
+  <p class="step" id="step" hidden></p>
+
   <div class="bar accept" id="bar" role="status" aria-live="polite">
     <span class="verdict"><i></i><span id="verdict">ACCEPT</span></span>
     <span class="fare" id="fare">£3.07</span>
     <span class="stats"><b id="perMile">£2.05/mi</b><small id="details">1.0 mi · £24.56/hr</small></span>
   </div>
 
+  <section id="login" hidden>
+    <p>Log in to use Fare Bar.</p>
+    <form id="loginForm" autocomplete="off">
+      <label>Email<input id="email" type="email" inputmode="email" disabled></label>
+      <label>Password<input id="password" type="password" disabled></label>
+      <button class="primary" type="submit" disabled>Log in</button>
+    </form>
+    <p class="small">Accounts are not connected yet, so email login is switched off.</p>
+    <button class="primary" id="guest">Continue on this phone only</button>
+  </section>
+
   <section id="home">
     <button class="nav" data-go="config"><span><b>Configuration</b><small>Fare, miles, minutes and your minimum per mile</small></span></button>
     <button class="nav" data-go="control"><span><b>Control Centre</b><small>Open the bar from your iPhone Control Centre</small></span></button>
     <button class="nav" data-go="plans"><span><b>Subscription</b><small>See plans</small></span></button>
+    <button class="nav" id="logout"><span><b>Log out</b><small>Go back to the login screen</small></span></button>
   </section>
 
   <section id="config" hidden>
@@ -77,6 +95,7 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
       <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
     </form>
     <p class="small">Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
+    <button class="primary" id="finish" hidden>Finish setup</button>
   </section>
 
   <section id="control" hidden>
@@ -101,7 +120,10 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
 <script>
 var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
-var TITLES={home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
+var TITLES={login:'Log in',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
+var STEPS={login:['Step 1 of 3','Log in'],plans:['Step 2 of 3','Choose a plan'],config:['Step 3 of 3','App setup']};
+function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function set(k,v){try{v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
 function num(id){return parseFloat($(id).value.replace(',','.'))}
 function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
 function save(){try{var s={};ids.forEach(function(id){s[id]=$(id).value});localStorage.setItem('fareBar',JSON.stringify(s))}catch(e){}}
@@ -117,14 +139,26 @@ function calc(){
   $('perMile').textContent='£'+perMile.toFixed(2)+'/mi';
   $('details').textContent=miles.toFixed(1)+' mi'+(mins>0?' · £'+(fare/mins*60).toFixed(2)+'/hr':'');
 }
+function gate(){
+  if(!get('fareBarUser'))return'login';
+  if(!trial())return'plans';
+  if(!get('fareBarSetup'))return'config';
+  return null;
+}
 function go(view){
-  if(!TITLES[view])view='home';
+  var g=gate();
+  if(g)view=g;
+  else if(!TITLES[view]||view==='login')view='home';
   Object.keys(TITLES).forEach(function(v){$(v).hidden=v!==view});
-  $('title').textContent=TITLES[view];
+  $('title').textContent=g?STEPS[g][1]:TITLES[view];
+  $('step').hidden=!g;
+  if(g)$('step').textContent=STEPS[g][0];
   $('badge').hidden=view!=='home';
-  $('back').hidden=view==='home';
-  $('bar').hidden=view==='control'||view==='plans';
-  if(location.hash.slice(1)!==(view==='home'?'':view))history.replaceState(null,'',view==='home'?location.pathname:'#'+view);
+  $('back').hidden=view==='home'||!!g;
+  $('finish').hidden=g!=='config';
+  $('bar').hidden=view==='login'||view==='control'||view==='plans';
+  history.replaceState(null,'',view==='home'||g?location.pathname:'#'+view);
+  window.scrollTo(0,0);
 }
 var TRIAL_DAYS=30;
 function trial(){
@@ -144,12 +178,18 @@ function showPlan(){
 }
 document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('click',function(){
   if(trial())return;
-  try{localStorage.setItem('fareBarTrial',JSON.stringify({plan:b.dataset.plan,start:Date.now()}))}catch(e){}
+  var onboarding=gate()==='plans';
+  set('fareBarTrial',JSON.stringify({plan:b.dataset.plan,start:Date.now()}));
   showPlan();
+  if(onboarding)go('home');
 })});
 load();calc();showPlan();go(location.hash.slice(1));
-document.querySelectorAll('.nav').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
+document.querySelectorAll('.nav[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
 $('back').addEventListener('click',function(){go('home')});
+$('guest').addEventListener('click',function(){set('fareBarUser','guest');go('home')});
+$('loginForm').addEventListener('submit',function(e){e.preventDefault()});
+$('finish').addEventListener('click',function(){save();set('fareBarSetup','1');go('home')});
+$('logout').addEventListener('click',function(){set('fareBarUser',null);go('home')});
 $('form').addEventListener('input',function(){calc();save()});
 $('form').addEventListener('submit',function(e){e.preventDefault()});
 $('copy').addEventListener('click',function(){

@@ -2,6 +2,14 @@
 
 A slim fare bar app for delivery drivers. It is a single `index.html` with no build step.
 
+## First run
+
+1. **Log in** — email login is switched off until accounts are connected; "Continue on this phone only" lets you in
+2. **Choose a plan** — start a 30-day free trial of Pro or Unlimited
+3. **App setup** — enter your numbers and tap Finish setup
+
+After that the app opens on Home. Log out returns to step 1.
+
 ## Screens
 
 - **Home** — the fare bar, plus buttons for Configuration, Control Centre and Subscription
