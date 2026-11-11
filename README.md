@@ -1,6 +1,10 @@
 # Fare Bar
 
-A slim fare bar app for delivery drivers. It is a single `index.html` with no build step.
+A slim fare bar app for delivery drivers. Plain HTML, CSS and JavaScript with no build step:
+
+- `index.html` — the pages
+- `styles.css` — the look
+- `app.js` — the maths, login and trial
 
 ## First run
 
