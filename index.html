@@ -9,9 +9,11 @@
 <title>Fare Bar</title>
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="map" id="map" aria-label="Map" hidden></div>
 <main>
   <header>
     <h1 id="title">Fare Bar</h1>
@@ -21,12 +23,13 @@
 
   <p class="step" id="step" hidden></p>
 
+  <div id="slotTop">
   <div class="offers" id="bar" role="status" aria-live="polite" hidden>
     <p class="kicker" id="kicker">Current offer</p>
     <div class="pill none" id="pill"><i class="dot" aria-hidden="true"></i><b id="pRate">£3.07</b><span class="sep" aria-hidden="true">·</span><span id="pMiles">2.0 mi</span><span class="sep" aria-hidden="true">·</span><span class="mins" id="pMins">~8 min</span></div>
   </div>
   <p class="banner none" id="banner" role="status" aria-live="polite" hidden><b id="bWord">–</b><small id="bMore"></small></p>
-  <div class="earlier" id="earlier"></div>
+  </div>
 
   <section id="loading"><p>Loading…</p></section>
 
@@ -54,10 +57,18 @@
   </section>
 
   <section id="home" hidden>
-    <button class="nav switch" id="activeToggle" role="switch" aria-checked="true"><span><b>Active</b><small id="activeNote">On: new orders update the bar</small></span><i aria-hidden="true"></i></button>
-    <p class="small detected" id="detected" role="status" aria-live="polite" hidden></p>
-    <p class="small" id="logNote" role="status" aria-live="polite"></p>
+    <div class="sheet" id="sheet">
+      <div class="status">
+        <div><b id="activeNote">You're offline</b><small id="chipToday">£0.00 today</small></div>
+        <button class="go" id="activeToggle" role="switch" aria-checked="false" aria-label="Go online"><span id="goWord">GO</span></button>
+      </div>
+      <div id="slotSheet"></div>
+      <p class="small detected" id="detected" role="status" aria-live="polite" hidden></p>
+      <p class="small" id="logNote" role="status" aria-live="polite"></p>
+    </div>
+  </section>
 
+  <section id="earnings" hidden>
     <h2>Today</h2>
     <dl class="tiles">
       <div><dt>Deliveries</dt><dd id="tCount">0</dd></div>
@@ -73,18 +84,21 @@
       <button class="primary ghost" id="sessionBtn">Start session</button>
     </div>
 
+    <div class="earlier" id="earlier"></div>
+
     <h2>Recent deliveries</h2>
     <ul class="recent" id="recent"><li class="empty">No deliveries logged yet.</li></ul>
+    <button class="nav" data-go="report"><span><b>Weekly report</b><small>Offers and profit per platform, last 7 days</small></span></button>
     <button class="primary ghost" id="exportCsv">Export CSV</button>
+  </section>
 
-    <h2>Settings</h2>
-    <button class="nav" data-go="report"><span><b>Weekly report</b><small>Offers seen and accepted, profit per platform</small></span></button>
-    <button class="nav" data-go="log"><span><b>Log delivery</b><small>Platform, rate, outbound and return miles, time</small></span></button>
-    <button class="nav" data-go="cost"><span><b>Cost model</b><small>MPG, fuel price, target per hour, return miles</small></span></button>
-    <button class="nav" data-go="auto"><span><b>Auto-detect</b><small>Read rate and miles from a delivery request</small></span></button>
-    <button class="nav" data-go="control"><span><b>Control Centre</b><small>Open the bar from your iPhone Control Centre</small></span></button>
-    <button class="nav" data-go="plans"><span><b>Subscription</b><small>See plans</small></span></button>
+  <section id="account" hidden>
     <button class="nav" data-go="profile"><span><b>Profile</b><small id="who">Your account, password and log out</small></span></button>
+    <button class="nav" data-go="plans"><span><b>Subscription</b><small>See plans</small></span></button>
+    <button class="nav" data-go="log"><span><b>Log delivery</b><small>Platform, rate, outbound and return miles, time</small></span></button>
+    <button class="nav" data-go="cost"><span><b>Cost model</b><small>Vehicle, fuel, target per hour, return miles</small></span></button>
+    <button class="nav" data-go="auto"><span><b>Auto-detect</b><small>Read rate and miles from a delivery request</small></span></button>
+    <button class="nav" data-go="control"><span><b>Control Centre</b><small>Open Fare Bar from Control Centre, install the icon</small></span></button>
   </section>
 
   <section id="log" hidden>
@@ -179,6 +193,12 @@
     <p class="small">Payments are not set up yet, so nothing is charged when the trial ends.</p>
   </section>
 </main>
+<nav class="tabs" id="tabs" aria-label="Main" hidden>
+  <button data-tab="home"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2 20 21l-8-4-8 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Drive</span></button>
+  <button data-tab="earnings"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="2"/><circle cx="16.5" cy="14.5" r="1.5" fill="currentColor"/></svg><span>Earnings</span></button>
+  <button data-tab="account"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Account</span></button>
+</nav>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 </body>

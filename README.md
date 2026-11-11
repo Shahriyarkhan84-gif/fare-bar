@@ -42,6 +42,14 @@ Status compares net profit per hour with your target: green at or above target (
 | FR-14 | Weekly report: seen vs taken, per platform | Done |
 | FR-15 | CSV export | Done |
 
+## Layout
+
+Built like a driver app, with three tabs at the bottom:
+
+- **Drive** — a dark map (OpenStreetMap) with your position, and a bottom sheet with the big **GO** button. GO = online: offers pop up as a pill with Profit or Loss. STOP = offline: offers are ignored. Your location is asked for only when you go online and never leaves the phone
+- **Earnings** — today's totals by platform, session, earlier offers, recent deliveries, weekly report, CSV export
+- **Account** — profile, subscription, log delivery, cost model, auto-detect, Control Centre
+
 ## Pages
 
 - **Home** — Active switch, the offer pill and Profit / Loss line, today's totals split by platform, session, recent deliveries, Export CSV

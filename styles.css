@@ -120,3 +120,28 @@ select{min-height:46px;-webkit-appearance:none;appearance:none;background-image:
 .result span{color:#9898a0;font-weight:500}
 .earlier{margin-bottom:8px}
 .offers .pill{margin-bottom:10px}
+
+/* Driver-app layout: map, bottom sheet with the GO button, tab bar */
+.map{position:fixed;inset:0;z-index:0;background:#111}
+main{position:relative;z-index:1}
+body.tabbed main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+body.drive main{pointer-events:none}
+body.drive header,body.drive .sheet{pointer-events:auto}
+body.drive header h1{text-shadow:0 1px 8px #000}
+.sheet{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));margin:0 auto;max-width:420px;max-height:72vh;overflow:auto;background:#000;border-radius:24px 24px 0 0;padding:16px 16px 12px;box-shadow:0 -10px 30px #000a}
+.status{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.status div{flex:1;min-width:0}
+.status b{display:block;font-size:20px;font-weight:800}
+.status small{color:#9898a0;font-size:13px;font-variant-numeric:tabular-nums}
+.go{flex:none;width:84px;height:84px;border-radius:50%;border:0;background:#5cff5c;color:#000;font:inherit;font-size:24px;font-weight:800;box-shadow:0 0 0 6px rgba(92,255,92,.22);cursor:pointer}
+.go[aria-checked=true]{width:64px;height:64px;background:#2c2c2e;color:#fff;font-size:12px;box-shadow:none}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:3;display:flex;background:#0d0d0f;border-top:1px solid #2c2c2e;padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{flex:1;min-height:64px;border:0;background:none;color:#9898a0;font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.tabs button[aria-current=page]{color:#5cff5c}
+.leaflet-container{background:#111}
+.you{width:16px;height:16px;border-radius:50%;background:#5cff5c;border:3px solid #000;box-shadow:0 0 0 6px rgba(92,255,92,.25)}
+.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6)}
+.leaflet-control-attribution{background:rgba(0,0,0,.6)!important;color:#9898a0!important}
+.leaflet-control-attribution a{color:#c7c7cc!important}
+body.drive .leaflet-top.leaflet-right{top:calc(64px + env(safe-area-inset-top))}
+.leaflet-control-attribution{font-size:10px}

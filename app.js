@@ -5,12 +5,14 @@ var LITRES_PER_GALLON=4.54609; // UK gallon, to turn MPG and £ per litre into �
 var COST_DEFAULTS={vehicle:'car',mpg:45,fuel:1.45,run:0,tip:0,target:15,opp:0,tax:0,assume:true};
 var PLATFORMS=['Uber Eats','Deliveroo','Other'];
 var $=function(id){return document.getElementById(id)};
-var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',report:'Weekly report',log:'Log delivery',cost:'Cost model',auto:'Auto-detect',profile:'Profile',control:'Control Centre',plans:'Subscription'};
+var TITLES={loading:'Fare Bar',login:'Log in',signup:'Create account',home:'Fare Bar',earnings:'Earnings',account:'Account',report:'Weekly report',log:'Log delivery',cost:'Cost model',auto:'Auto-detect',profile:'Profile',control:'Control Centre',plans:'Subscription'};
 var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
 var OFFER_IDS=['inPlatform','inRate','inMins','inOut','inRet'];
 var COST_IDS={cMpg:'mpg',cFuel:'fuel',cRun:'run',cTip:'tip',cTarget:'target',cOpp:'opp',cTax:'tax'};
 var sb=null,session=null,trialRow=null,isOwner=false,ready=false,deliveries=[],pendingView=null;
-var offerCame=false; // Home shows the offer pill only after an order pops up (a scan or link brought one in)
+var offerCame=false,current='home',map=null,youMarker=null;
+var TABS=['home','earnings','account'];
+var PARENT={report:'earnings',log:'account',cost:'account',auto:'account',control:'account',plans:'account',profile:'account'}; // Home shows the offer pill only after an order pops up (a scan or link brought one in)
 
 /* ---------- small helpers ---------- */
 function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
@@ -50,10 +52,31 @@ function isActive(){return get('fareBarActive')!=='0'}
 function setActive(on){
   set('fareBarActive',on?'1':'0');
   $('activeToggle').setAttribute('aria-checked',on?'true':'false');
-  if(!on)offerCame=false;
+  if(!on){offerCame=false;if($('detected'))$('detected').hidden=true}
   if($('home')&&!$('home').hidden){$('bar').hidden=!(offerCame&&on);$('banner').hidden=$('bar').hidden}
-  $('activeNote').textContent=on?'On: new orders update the bar':'Off: new orders are ignored';
+  $('activeNote').textContent=on?'You\'re online':'You\'re offline';
+  $('goWord').textContent=on?'STOP':'GO';
+  $('activeToggle').setAttribute('aria-label',on?'Go offline':'Go online');
+  if(on)locate();
   calc();
+}
+/* Map behind the Drive screen. Location is asked only when you go online and never leaves the phone. */
+function initMap(){
+  if(map||!window.L)return;
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([53.7997,-1.5492],13); // Leeds until your location is known
+  L.control.attribution({position:'topright',prefix:false}).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+  setTimeout(function(){map.invalidateSize()},0);
+  if(isActive())locate();
+}
+function locate(){
+  if(!map||!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(function(p){
+    var ll=[p.coords.latitude,p.coords.longitude];
+    if(!youMarker)youMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="you"></div>',iconSize:[22,22]}),keyboard:false}).addTo(map);
+    else youMarker.setLatLng(ll);
+    map.setView(ll,15);
+  },function(){},{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
 function calc(){
   var c=cost(),o=offer(),bar=$('bar'),banner=$('banner');
@@ -160,6 +183,7 @@ function showDeliveries(){
   var today=totals(deliveries.filter(function(d){return new Date(d.created_at)>=start}));
   $('tCount').textContent=today.count;$('tNet').textContent=money(today.net);$('tMiles').textContent=today.miles.toFixed(1);
   $('tHour').textContent=today.perHour===null?'–':money(today.perHour);
+  $('chipToday').textContent=money(today.net)+' today · '+today.count+(today.count===1?' delivery':' deliveries');
   var todayRows=deliveries.filter(function(d){return new Date(d.created_at)>=start}),split=$('split');split.textContent='';
   PLATFORMS.forEach(function(p){
     var t=totals(todayRows.filter(function(d){return(d.platform||'Other')===p}));
@@ -270,12 +294,22 @@ function go(view){
   $('title').textContent=view==='signup'?TITLES.signup:STEPS[g]?STEPS[g][1]:TITLES[view];
   $('step').hidden=!STEPS[g];
   if(STEPS[g])$('step').textContent=STEPS[g][0];
+  current=view;
+  var tab=TABS.indexOf(view)>=0;
   $('badge').hidden=view!=='home';
-  $('back').hidden=view==='home'||!!g;
+  $('back').hidden=tab||!!g;
+  $('tabs').hidden=!!g||(!tab&&!PARENT[view]);
+  document.body.classList.toggle('tabbed',!$('tabs').hidden);
+  document.body.classList.toggle('drive',view==='home');
+  document.querySelectorAll('.tabs button').forEach(function(b){if(b.dataset.tab===(tab?view:PARENT[view]))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  $('map').hidden=view!=='home';
+  var slot=view==='home'?$('slotSheet'):$('slotTop');
+  slot.appendChild($('bar'));slot.appendChild($('banner'));
   var showBar=(view==='home'&&offerCame&&isActive())||view==='log'||view==='cost';
-  $('bar').hidden=!showBar;$('banner').hidden=!showBar;$('earlier').hidden=view!=='home';
+  $('bar').hidden=!showBar;$('banner').hidden=!showBar;
   if(view==='cost')showCost();
-  if(view==='home')showDeliveries();
+  if(view==='home'){initMap();showDeliveries()}
+  if(view==='earnings')showDeliveries();
   if(view==='report')showReport();
   history.replaceState(null,'',view==='signup'?'#signup':view==='home'||g?location.pathname:'#'+view);
   window.scrollTo(0,0);
@@ -379,7 +413,8 @@ if(window.supabase){
 }
 
 document.querySelectorAll('.nav[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
-$('back').addEventListener('click',function(){go('home')});
+$('back').addEventListener('click',function(){go(PARENT[current]||'home')});
+document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.tab)})});
 $('activeToggle').addEventListener('click',function(){setActive(!isActive())});
 $('assumeToggle').addEventListener('click',function(){var c=cost();c.assume=!c.assume;saveCost(c);showCost();calc();saveOffer()});
 $('costForm').addEventListener('input',function(){
