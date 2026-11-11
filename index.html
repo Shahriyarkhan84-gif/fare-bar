@@ -40,10 +40,11 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
 .primary{width:100%;border:0;border-radius:16px;background:#5cff5c;color:#000;font:inherit;font-size:16px;font-weight:700;min-height:50px;cursor:pointer}
 .primary:disabled{background:#2c2c2e;color:#9898a0;cursor:not-allowed}
 .plan{background:#1c1c1e;border:1px solid #3a3a3c;border-radius:18px;padding:16px;margin-bottom:16px}
-.plan.pro{border:1.5px solid #5cff5c}
+.plan.on{border:1.5px solid #5cff5c}
+.plan .primary{margin-top:10px}
 .plan h2{display:flex;justify-content:space-between;font-size:18px;margin:0 0 6px}
 .plan h2 span{font-size:16px;color:#9898a0}
-.plan.pro h2 span{color:#5cff5c}
+.plan.on h2 span{color:#5cff5c}
 .plan p{font-size:13px;margin:0 0 4px}
 [hidden]{display:none!important}
 </style>
@@ -91,10 +92,10 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
   </section>
 
   <section id="plans" hidden>
-    <div class="plan"><h2>Free <span>£0</span></h2><p>The fare bar with per mile, per hour and accept or reject</p><p>Your current plan</p></div>
-    <div class="plan pro"><h2>Pro <span>£4.99 / month</span></h2><p>Everything in Free</p><p>Sample plan: features and price to be decided</p></div>
-    <button class="primary" disabled>Subscribe</button>
-    <p class="small">Payments are not set up yet, so this button does nothing.</p>
+    <p id="trialState" aria-live="polite">Both plans start with a 30-day free trial.</p>
+    <div class="plan" data-plan="Pro"><h2>Pro <span>£4.99 / month</span></h2><p>30 days free, then £4.99 a month</p><p>Sample price; features to be decided</p><button class="primary trial" data-plan="Pro">Start 30-day free trial</button></div>
+    <div class="plan" data-plan="Unlimited"><h2>Unlimited <span>£9.99 / month</span></h2><p>30 days free, then £9.99 a month</p><p>Sample price; features to be decided</p><button class="primary trial" data-plan="Unlimited">Start 30-day free trial</button></div>
+    <p class="small">Payments are not set up yet. The trial is only remembered on this phone and nothing is charged when it ends.</p>
   </section>
 </main>
 <script>
@@ -125,7 +126,28 @@ function go(view){
   $('bar').hidden=view==='control'||view==='plans';
   if(location.hash.slice(1)!==(view==='home'?'':view))history.replaceState(null,'',view==='home'?location.pathname:'#'+view);
 }
-load();calc();go(location.hash.slice(1));
+var TRIAL_DAYS=30;
+function trial(){
+  try{var t=JSON.parse(localStorage.getItem('fareBarTrial')||'null');if(!t||!t.plan||!t.start)return null;
+    var left=TRIAL_DAYS-Math.floor((Date.now()-t.start)/864e5);return{plan:t.plan,left:left}}catch(e){return null}
+}
+function showPlan(){
+  var t=trial(),active=t&&t.left>0;
+  $('badge').textContent=active?t.plan.toUpperCase()+' TRIAL · '+t.left+(t.left===1?' DAY':' DAYS'):'FREE';
+  $('trialState').textContent=active?t.plan+' trial: '+t.left+(t.left===1?' day':' days')+' left.':t?'Your '+t.plan+' trial has ended.':'Both plans start with a 30-day free trial.';
+  document.querySelectorAll('.plan').forEach(function(c){
+    var mine=active&&c.dataset.plan===t.plan,btn=c.querySelector('.trial');
+    c.classList.toggle('on',!!mine);
+    btn.disabled=!!t;
+    btn.textContent=mine?'Trial running':t?(c.dataset.plan===t.plan?'Trial used':'Trial already used'):'Start 30-day free trial';
+  });
+}
+document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('click',function(){
+  if(trial())return;
+  try{localStorage.setItem('fareBarTrial',JSON.stringify({plan:b.dataset.plan,start:Date.now()}))}catch(e){}
+  showPlan();
+})});
+load();calc();showPlan();go(location.hash.slice(1));
 document.querySelectorAll('.nav').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
 $('back').addEventListener('click',function(){go('home')});
 $('form').addEventListener('input',function(){calc();save()});

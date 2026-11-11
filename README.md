@@ -7,7 +7,7 @@ A slim fare bar app for delivery drivers. It is a single `index.html` with no bu
 - **Home** — the fare bar, plus buttons for Configuration, Control Centre and Subscription
 - **Configuration** — type the fare, miles, minutes and your minimum per mile
 - **Control Centre** — steps to add an iPhone Control Centre button that opens the app, and a button to copy the app link
-- **Subscription** — Free and Pro plans. The Pro plan is a sample and payments are not connected, so Subscribe is disabled
+- **Subscription** — Pro and Unlimited plans, each with a 30-day free trial. Prices are samples and payments are not connected: the trial is only remembered on the device and nothing is charged when it ends
 
 ## Maths
 
