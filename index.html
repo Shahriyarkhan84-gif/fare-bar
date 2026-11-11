@@ -2,48 +2,105 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Fare Bar</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#000;color:#fff;font:15px/1.4 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{max-width:392px;margin:0 auto;padding:16px}
-.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;height:56px;padding:0 18px;border-radius:28px;background:#000;border:1px solid rgba(255,255,255,.14);position:sticky;top:12px;width:100%;color:inherit;font:inherit;cursor:pointer}
+main{max-width:392px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 16px 32px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;min-height:44px}
+h1{font-size:26px;font-weight:800;margin:0}
+.badge{font-size:11px;font-weight:800;color:#9898a0;background:#2c2c2e;border-radius:10px;padding:4px 10px}
+.back{border:0;background:none;color:#5cff5c;font:inherit;font-weight:600;min-height:44px;padding:0 4px;cursor:pointer}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;height:56px;padding:0 18px;border-radius:28px;background:#000;border:1px solid rgba(255,255,255,.14);margin-bottom:16px}
 .verdict{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--v)}
 .verdict i{width:8px;height:8px;border-radius:50%;background:var(--v)}
 .fare{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
-.stats{display:block;text-align:right;line-height:1.2;font-variant-numeric:tabular-nums}
+.stats{text-align:right;line-height:1.2;font-variant-numeric:tabular-nums}
 .stats b{display:block;font-size:13px;color:var(--v)}
 .stats small{font-size:10px;font-weight:500;color:#9898a0}
 .accept{--v:#5cff5c}.reject{--v:#ff6e54}.empty{--v:#9898a0}
-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.nav{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:16px;background:#1c1c1e;color:inherit;font:inherit;padding:14px 16px;margin-bottom:12px;cursor:pointer}
+.nav span{flex:1}
+.nav b{display:block;font-size:16px;font-weight:600}
+.nav small{color:#9898a0;font-size:12px}
+.nav::after{content:"\203A";color:#9898a0;font-size:22px}
+form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 label{display:block;font-size:12px;color:#9898a0}
 input{display:block;width:100%;margin-top:4px;min-height:46px;padding:0 12px;border-radius:12px;border:1px solid #3a3a3c;background:#2c2c2e;color:#fff;font:inherit;font-size:17px}
-input:focus{outline:2px solid #5cff5c;outline-offset:1px}
-p{color:#9898a0;font-size:12px;margin:16px 0 0}
+input:focus-visible,button:focus-visible{outline:2px solid #5cff5c;outline-offset:2px}
+p{color:#9898a0;margin:0 0 16px}
+p.small{font-size:12px;margin-top:16px}
+ol{list-style:none;margin:0 0 16px;padding:0;counter-reset:s}
+ol li{counter-increment:s;display:flex;gap:12px;background:#1c1c1e;border-radius:16px;padding:12px 14px;margin-bottom:12px;font-size:14px}
+ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
+.primary{width:100%;border:0;border-radius:16px;background:#5cff5c;color:#000;font:inherit;font-size:16px;font-weight:700;min-height:50px;cursor:pointer}
+.primary:disabled{background:#2c2c2e;color:#9898a0;cursor:not-allowed}
+.plan{background:#1c1c1e;border:1px solid #3a3a3c;border-radius:18px;padding:16px;margin-bottom:16px}
+.plan.pro{border:1.5px solid #5cff5c}
+.plan h2{display:flex;justify-content:space-between;font-size:18px;margin:0 0 6px}
+.plan h2 span{font-size:16px;color:#9898a0}
+.plan.pro h2 span{color:#5cff5c}
+.plan p{font-size:13px;margin:0 0 4px}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
 <main>
-  <button type="button" class="bar accept" id="bar" aria-expanded="false" aria-controls="panel" aria-label="Fare bar. Tap to change the numbers.">
+  <header>
+    <h1 id="title">Fare Bar</h1>
+    <span class="badge" id="badge">FREE</span>
+    <button class="back" id="back" hidden>Done</button>
+  </header>
+
+  <div class="bar accept" id="bar" role="status" aria-live="polite">
     <span class="verdict"><i></i><span id="verdict">ACCEPT</span></span>
     <span class="fare" id="fare">£3.07</span>
     <span class="stats"><b id="perMile">£2.05/mi</b><small id="details">1.0 mi · £24.56/hr</small></span>
-  </button>
-  <div id="panel" hidden>
-  <form id="form" autocomplete="off">
-    <label>Fare (£)<input id="inFare" inputmode="decimal" value="3.07"></label>
-    <label>Miles<input id="inMiles" inputmode="decimal" value="1"></label>
-    <label>Minutes<input id="inMins" inputmode="decimal" value="7.5"></label>
-    <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
-  </form>
-  <p>Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
   </div>
+
+  <section id="home">
+    <button class="nav" data-go="config"><span><b>Configuration</b><small>Fare, miles, minutes and your minimum per mile</small></span></button>
+    <button class="nav" data-go="control"><span><b>Control Centre</b><small>Open the bar from your iPhone Control Centre</small></span></button>
+    <button class="nav" data-go="plans"><span><b>Subscription</b><small>See plans</small></span></button>
+  </section>
+
+  <section id="config" hidden>
+    <form id="form" autocomplete="off">
+      <label>Fare (£)<input id="inFare" inputmode="decimal" value="3.07"></label>
+      <label>Miles<input id="inMiles" inputmode="decimal" value="1"></label>
+      <label>Minutes<input id="inMins" inputmode="decimal" value="7.5"></label>
+      <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
+    </form>
+    <p class="small">Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
+  </section>
+
+  <section id="control" hidden>
+    <p>Add a button to your iPhone Control Centre that opens the fare bar.</p>
+    <ol>
+      <li>Open the Shortcuts app and make a new shortcut with the action “Open URLs”.</li>
+      <li>Paste the app link into the shortcut and name it “Fare Bar”.</li>
+      <li>Swipe down from the top-right corner to open Control Centre.</li>
+      <li>Tap +, then “Add a Control”, choose Shortcut and pick “Fare Bar”.</li>
+    </ol>
+    <button class="primary" id="copy">Copy app link</button>
+    <p class="small" id="copyNote" aria-live="polite"></p>
+  </section>
+
+  <section id="plans" hidden>
+    <div class="plan"><h2>Free <span>£0</span></h2><p>The fare bar with per mile, per hour and accept or reject</p><p>Your current plan</p></div>
+    <div class="plan pro"><h2>Pro <span>£4.99 / month</span></h2><p>Everything in Free</p><p>Sample plan: features and price to be decided</p></div>
+    <button class="primary" disabled>Subscribe</button>
+    <p class="small">Payments are not set up yet, so this button does nothing.</p>
+  </section>
 </main>
 <script>
 var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
+var TITLES={home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
 function num(id){return parseFloat($(id).value.replace(',','.'))}
 function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
 function save(){try{var s={};ids.forEach(function(id){s[id]=$(id).value});localStorage.setItem('fareBar',JSON.stringify(s))}catch(e){}}
@@ -51,7 +108,7 @@ function calc(){
   var fare=num('inFare'),miles=num('inMiles'),mins=num('inMins'),min=num('inMin'),bar=$('bar');
   var ok=isFinite(fare)&&fare>=0&&miles>0;
   $('fare').textContent=isFinite(fare)?'£'+fare.toFixed(2):'£–';
-  if(!ok){bar.className='bar empty';$('verdict').textContent='TAP';$('perMile').textContent='–';$('details').textContent='fare and miles';return}
+  if(!ok){bar.className='bar empty';$('verdict').textContent='SET UP';$('perMile').textContent='–';$('details').textContent='fare and miles';return}
   var perMile=fare/(miles*1.5);
   var accept=!isFinite(min)||perMile>=min;
   bar.className='bar '+(accept?'accept':'reject');
@@ -59,10 +116,26 @@ function calc(){
   $('perMile').textContent='£'+perMile.toFixed(2)+'/mi';
   $('details').textContent=miles.toFixed(1)+' mi'+(mins>0?' · £'+(fare/mins*60).toFixed(2)+'/hr':'');
 }
-load();calc();
-$('bar').addEventListener('click',function(){var p=$('panel');p.hidden=!p.hidden;this.setAttribute('aria-expanded',!p.hidden);if(!p.hidden)$('inFare').focus()});
+function go(view){
+  if(!TITLES[view])view='home';
+  Object.keys(TITLES).forEach(function(v){$(v).hidden=v!==view});
+  $('title').textContent=TITLES[view];
+  $('badge').hidden=view!=='home';
+  $('back').hidden=view==='home';
+  $('bar').hidden=view==='control'||view==='plans';
+  if(location.hash.slice(1)!==(view==='home'?'':view))history.replaceState(null,'',view==='home'?location.pathname:'#'+view);
+}
+load();calc();go(location.hash.slice(1));
+document.querySelectorAll('.nav').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
+$('back').addEventListener('click',function(){go('home')});
 $('form').addEventListener('input',function(){calc();save()});
 $('form').addEventListener('submit',function(e){e.preventDefault()});
+$('copy').addEventListener('click',function(){
+  var link=location.origin+location.pathname,note=$('copyNote');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(function(){note.textContent='Link copied: '+link},function(){note.textContent='Copy this link: '+link});
+  }else{note.textContent='Copy this link: '+link}
+});
 </script>
 </body>
 </html>
