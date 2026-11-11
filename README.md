@@ -6,9 +6,16 @@ A slim fare bar app for delivery drivers. It is a single `index.html` with no bu
 
 1. **Log in** — email login is switched off until accounts are connected; "Continue on this phone only" lets you in
 2. **Choose a plan** — start a 30-day free trial of Pro or Unlimited
-3. **App setup** — enter your numbers and tap Finish setup
 
 After that the app opens on Home. Log out returns to step 1.
+
+## Sending an order to the bar
+
+Open the app with the numbers in the link and the bar fills itself:
+
+`?fare=3.07&miles=1&mins=7.5`
+
+An iPhone Shortcut can build this link, so the bar can be filled without typing. The app cannot read other apps by itself.
 
 ## Screens
 

@@ -30,7 +30,7 @@ h1{font-size:26px;font-weight:800;margin:0}
 .nav::after{content:"\203A";color:#9898a0;font-size:22px}
 #form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 #loginForm label{margin-bottom:12px}
-#loginForm .primary,#finish{margin-top:16px}
+#loginForm .primary{margin-top:16px}
 .step{font-size:12px;font-weight:700;color:#5cff5c;margin:-8px 0 12px}
 input:disabled{opacity:.5}
 label{display:block;font-size:12px;color:#9898a0}
@@ -95,7 +95,6 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
       <label>Accept from (£ per mile)<input id="inMin" inputmode="decimal" value="1.50"></label>
     </form>
     <p class="small">Per mile = fare ÷ (miles × 1.5). The extra half covers the return trip.</p>
-    <button class="primary" id="finish" hidden>Finish setup</button>
   </section>
 
   <section id="control" hidden>
@@ -121,12 +120,18 @@ ol li::before{content:counter(s);color:#5cff5c;font-weight:800;font-size:16px}
 var $=function(id){return document.getElementById(id)};
 var ids=['inFare','inMiles','inMins','inMin'];
 var TITLES={login:'Log in',home:'Fare Bar',config:'Configuration',control:'Control Centre',plans:'Subscription'};
-var STEPS={login:['Step 1 of 3','Log in'],plans:['Step 2 of 3','Choose a plan'],config:['Step 3 of 3','App setup']};
+var STEPS={login:['Step 1 of 2','Log in'],plans:['Step 2 of 2','Choose a plan']};
 function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function set(k,v){try{v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
 function num(id){return parseFloat($(id).value.replace(',','.'))}
 function load(){try{var s=JSON.parse(localStorage.getItem('fareBar')||'{}');ids.forEach(function(id){if(s[id]!=null)$(id).value=s[id]})}catch(e){}}
 function save(){try{var s={};ids.forEach(function(id){s[id]=$(id).value});localStorage.setItem('fareBar',JSON.stringify(s))}catch(e){}}
+function fromLink(){
+  // A link such as ?fare=3.07&miles=1&mins=7.5 fills the bar, so a Shortcut can send an order to the app
+  var q=new URLSearchParams(location.search),map={fare:'inFare',miles:'inMiles',mins:'inMins'},used=false;
+  Object.keys(map).forEach(function(k){var v=parseFloat((q.get(k)||'').replace(',','.'));if(isFinite(v)&&v>=0){$(map[k]).value=v;used=true}});
+  if(used){save();history.replaceState(null,'',location.pathname+location.hash)}
+}
 function calc(){
   var fare=num('inFare'),miles=num('inMiles'),mins=num('inMins'),min=num('inMin'),bar=$('bar');
   var ok=isFinite(fare)&&fare>=0&&miles>0;
@@ -142,7 +147,6 @@ function calc(){
 function gate(){
   if(!get('fareBarUser'))return'login';
   if(!trial())return'plans';
-  if(!get('fareBarSetup'))return'config';
   return null;
 }
 function go(view){
@@ -155,7 +159,6 @@ function go(view){
   if(g)$('step').textContent=STEPS[g][0];
   $('badge').hidden=view!=='home';
   $('back').hidden=view==='home'||!!g;
-  $('finish').hidden=g!=='config';
   $('bar').hidden=view==='login'||view==='control'||view==='plans';
   history.replaceState(null,'',view==='home'||g?location.pathname:'#'+view);
   window.scrollTo(0,0);
@@ -183,12 +186,11 @@ document.querySelectorAll('.trial').forEach(function(b){b.addEventListener('clic
   showPlan();
   if(onboarding)go('home');
 })});
-load();calc();showPlan();go(location.hash.slice(1));
+load();fromLink();calc();showPlan();go(location.hash.slice(1));
 document.querySelectorAll('.nav[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go)})});
 $('back').addEventListener('click',function(){go('home')});
 $('guest').addEventListener('click',function(){set('fareBarUser','guest');go('home')});
 $('loginForm').addEventListener('submit',function(e){e.preventDefault()});
-$('finish').addEventListener('click',function(){save();set('fareBarSetup','1');go('home')});
 $('logout').addEventListener('click',function(){set('fareBarUser',null);go('home')});
 $('form').addEventListener('input',function(){calc();save()});
 $('form').addEventListener('submit',function(e){e.preventDefault()});
