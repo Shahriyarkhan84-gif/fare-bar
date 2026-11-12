@@ -145,3 +145,4 @@ body.drive header h1{text-shadow:0 1px 8px #000}
 .leaflet-control-attribution a{color:#c7c7cc!important}
 body.drive .leaflet-top.leaflet-right{top:calc(64px + env(safe-area-inset-top))}
 .leaflet-control-attribution{font-size:10px}
+button,a,.map{touch-action:manipulation}

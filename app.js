@@ -63,7 +63,7 @@ function setActive(on){
 /* Map behind the Drive screen. Location is asked only when you go online and never leaves the phone. */
 function initMap(){
   if(map||!window.L)return;
-  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([53.7997,-1.5492],13); // Leeds until your location is known
+  map=L.map('map',{zoomControl:false,attributionControl:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false,boxZoom:false,keyboard:false}).setView([53.7997,-1.5492],13); // Leeds until your location is known
   L.control.attribution({position:'topright',prefix:false}).addTo(map);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
   setTimeout(function(){map.invalidateSize()},0);
@@ -75,7 +75,7 @@ function locate(){
     var ll=[p.coords.latitude,p.coords.longitude];
     if(!youMarker)youMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="you"></div>',iconSize:[22,22]}),keyboard:false}).addTo(map);
     else youMarker.setLatLng(ll);
-    map.setView(ll,15);
+    map.panTo(ll);
   },function(){},{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
 function calc(){
